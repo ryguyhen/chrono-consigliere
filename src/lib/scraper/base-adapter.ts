@@ -91,7 +91,9 @@ export abstract class BaseAdapter {
     const cleaned = raw.replace(/[^0-9.]/g, '');
     const parsed = parseFloat(cleaned);
     if (isNaN(parsed)) return null;
-    return Math.round(parsed * 100); // store in cents
+    const cents = Math.round(parsed * 100);
+    // Guard against INT4 overflow (max ~$21M) — null out absurd values
+    return cents > 2_147_483_647 ? null : cents;
   }
 
   protected parseCaseMm(raw: string | null): number | null {
