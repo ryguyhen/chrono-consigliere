@@ -158,7 +158,7 @@ export default async function ProfilePage({ params }: PageProps) {
           )}
 
           {/* Taste overlap (only when viewing another person) */}
-          {overlap && overlap.overlapCount > 0 && (
+          {overlap && (overlap.overlapCount ?? 0) > 0 && (
             <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-3">
               <span className="text-[10px] uppercase tracking-[0.1em] text-cream/30">Your overlap</span>
               <span className="font-mono text-[14px] text-gold">{overlap.score}%</span>

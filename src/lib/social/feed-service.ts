@@ -15,7 +15,7 @@ export async function emitFeedEvent({
   actorId: string;
   type: FeedEventType;
   listingId?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, string>;
 }) {
   // Create the feed event
   const event = await prisma.activityFeedEvent.create({

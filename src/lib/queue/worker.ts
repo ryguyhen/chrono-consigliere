@@ -5,7 +5,7 @@
 // The cron scheduler fires "scrape-all" daily at 3am UTC.
 // Individual sources can also be queued on-demand from the Admin UI.
 
-import { Worker, Queue, QueueScheduler, RepeatableJob } from 'bullmq';
+import { Worker, Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { PrismaClient } from '@prisma/client';
 import { runScrapeJob } from '../scraper/scrape-runner';
@@ -26,7 +26,7 @@ export async function scheduleDailySync() {
     'scrape-all',
     { all: true },
     {
-      repeat: { cron: '0 3 * * *' }, // 3:00 AM UTC daily
+      repeat: { pattern: '0 3 * * *' }, // 3:00 AM UTC daily
       jobId: 'daily-sync',
     }
   );
