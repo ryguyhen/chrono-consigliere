@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth/auth.config';
 import { prisma } from '@/lib/db';
 import { getTasteOverlap } from '@/lib/social/feed-service';
 import { WatchCard } from '@/components/watches/WatchCard';
+import { FollowButton } from '@/components/profile/FollowButton';
 import Link from 'next/link';
 
 interface PageProps { params: { username: string } }
@@ -124,17 +125,7 @@ export default async function ProfilePage({ params }: PageProps) {
                   Edit profile
                 </button>
               ) : (
-                <form action={isFollowing ? `/api/follow/${profile.userId}` : `/api/follow/${profile.userId}`} method="POST">
-                  <button
-                    type="submit"
-                    className={`text-[11px] uppercase tracking-wide px-5 py-2 rounded border transition-colors
-                      ${isFollowing
-                        ? 'bg-gold border-gold text-ink'
-                        : 'border-white/20 text-cream hover:border-gold hover:text-gold'}`}
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                </form>
+                <FollowButton userId={profile.userId} initialIsFollowing={isFollowing} />
               )}
             </div>
           </div>

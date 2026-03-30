@@ -1,0 +1,161 @@
+// src/app/people/page.tsx
+'use client';
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+interface UserResult {
+  id: string;
+  username: string;
+  displayName: string | null;
+  tasteTags: string[];
+  isFollowing: boolean;
+  followerCount: number;
+  likeCount: number;
+}
+
+function Avatar({ name, size = 36 }: { name: string | null; size?: number }) {
+  const initials = (name ?? 'U').slice(0, 2).toUpperCase();
+  const colors = ['bg-gold', 'bg-[#5A6E8C]', 'bg-[#6E5A8C]', 'bg-[#5A8C6E]', 'bg-[#8C6E5A]'];
+  const color = colors[initials.charCodeAt(0) % colors.length];
+  return (
+    <div className={`rounded-full ${color} flex items-center justify-center flex-shrink-0 text-cream font-serif`}
+      style={{ width: size, height: size, fontSize: size * 0.35 }}>
+      {initials}
+    </div>
+  );
+}
+
+export default function PeoplePage() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<UserResult[]>([]);
+  const [suggested, setSuggested] = useState<UserResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [following, setFollowing] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!session) router.push('/login');
+  }, [session, router]);
+
+  // Load suggested users on mount
+  useEffect(() => {
+    fetch('/api/search/users?q=a')
+      .then(r => r.json())
+      .then(d => setSuggested(d.users ?? []));
+  }, []);
+
+  const search = useCallback(async (q: string) => {
+    if (q.length < 2) { setResults([]); return; }
+    setLoading(true);
+    const res = await fetch(`/api/search/users?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    setResults(data.users ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => search(query), 300);
+    return () => clearTimeout(t);
+  }, [query, search]);
+
+  async function toggleFollow(userId: string, currently: boolean) {
+    const optimistic = !currently;
+    setFollowing(prev => ({ ...prev, [userId]: optimistic }));
+    setResults(prev => prev.map(u => u.id === userId ? { ...u, isFollowing: optimistic } : u));
+    setSuggested(prev => prev.map(u => u.id === userId ? { ...u, isFollowing: optimistic } : u));
+
+    const method = currently ? 'DELETE' : 'POST';
+    const res = await fetch(`/api/follow/${userId}`, { method });
+    if (!res.ok) {
+      // Revert on failure
+      setFollowing(prev => ({ ...prev, [userId]: currently }));
+      setResults(prev => prev.map(u => u.id === userId ? { ...u, isFollowing: currently } : u));
+      setSuggested(prev => prev.map(u => u.id === userId ? { ...u, isFollowing: currently } : u));
+    }
+  }
+
+  const displayList = query.length >= 2 ? results : suggested;
+
+  return (
+    <div className="max-w-[640px] mx-auto px-6 py-8">
+      <h1 className="font-serif text-[1.6rem] font-light mb-1">People</h1>
+      <p className="text-[13px] text-muted mb-6">Find collectors to follow and see what they're into.</p>
+
+      {/* Search */}
+      <div className="relative mb-8">
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search by name or username…"
+          className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-surface text-[13px] text-ink outline-none focus:border-gold transition-colors pr-10"
+          autoFocus
+        />
+        {loading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+        )}
+      </div>
+
+      {/* Results */}
+      {query.length >= 2 && results.length === 0 && !loading && (
+        <div className="text-center py-12 text-muted text-[13px]">
+          No users found for "{query}"
+        </div>
+      )}
+
+      {query.length < 2 && suggested.length > 0 && (
+        <div className="text-[10px] uppercase tracking-[0.12em] text-muted mb-3 font-medium">
+          Suggested collectors
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {displayList.map(user => {
+          const isFollowing = following[user.id] ?? user.isFollowing;
+          return (
+            <div key={user.id} className="bg-surface border border-[var(--border)] rounded-lg p-4 flex items-center gap-3">
+              <Link href={`/profile/${user.username}`}>
+                <Avatar name={user.displayName ?? user.username} size={40} />
+              </Link>
+
+              <div className="flex-1 min-w-0">
+                <Link href={`/profile/${user.username}`} className="hover:text-gold transition-colors">
+                  <div className="text-[14px] font-medium text-ink truncate">
+                    {user.displayName ?? user.username}
+                  </div>
+                  <div className="text-[11px] text-muted">@{user.username}</div>
+                </Link>
+                {user.tasteTags.length > 0 && (
+                  <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                    {user.tasteTags.slice(0, 3).map(tag => (
+                      <span key={tag} className="text-[9px] uppercase tracking-wide px-2 py-0.5 rounded-full border border-gold/30 text-gold/70">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                <button
+                  onClick={() => toggleFollow(user.id, isFollowing)}
+                  className={`text-[10px] uppercase tracking-wide px-3 py-1.5 rounded border transition-colors
+                    ${isFollowing
+                      ? 'bg-gold border-gold text-ink'
+                      : 'border-[var(--border)] text-muted hover:border-gold hover:text-gold'
+                    }`}
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+                <div className="text-[10px] text-muted">{user.followerCount} followers</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

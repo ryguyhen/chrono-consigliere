@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: '/', label: 'Discover' },
   { href: '/browse', label: 'Browse' },
   { href: '/feed', label: 'Friends' },
+  { href: '/people', label: 'People' },
   { href: '/wishlist', label: 'Wishlist' },
 ];
 
