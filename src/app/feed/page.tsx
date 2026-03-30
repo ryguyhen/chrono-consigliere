@@ -179,11 +179,11 @@ export default async function FeedPage() {
         <div className="space-y-5">
 
           {/* Taste overlap */}
-          {overlaps.some(o => o.overlap.overlapCount > 0) && (
+          {overlaps.some(o => (o.overlap.overlapCount ?? 0) > 0) && (
             <div className="bg-surface border border-[var(--border)] rounded-lg p-4">
               <div className="text-[10px] uppercase tracking-[0.12em] text-muted mb-3 font-medium">Taste overlap</div>
               <div className="space-y-3">
-                {overlaps.filter(o => o.overlap.overlapCount > 0).map(({ friend, overlap }) => (
+                {overlaps.filter(o => (o.overlap.overlapCount ?? 0) > 0).map(({ friend, overlap }) => (
                   <div key={friend.id} className="flex items-start gap-2.5 py-2.5 border-b border-[var(--border-soft)] last:border-0">
                     <Avatar name={friend.profile?.displayName ?? friend.name} size={28} />
                     <div className="flex-1 min-w-0">
