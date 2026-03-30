@@ -21,22 +21,22 @@ export function Nav({ session }: NavProps) {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 z-50 h-[52px] bg-ink border-b border-white/5 flex items-center gap-8 px-6">
+    <nav className="sticky top-0 z-50 h-[52px] bg-ink border-b border-white/[0.06] flex items-center px-6 gap-10">
       {/* Logo */}
-      <Link href="/" className="font-serif text-[20px] font-light text-cream tracking-wide whitespace-nowrap">
-        Chrono <span className="italic text-gold">Consigliere</span>
+      <Link href="/" className="font-serif text-[1.15rem] font-light text-cream/90 tracking-wide whitespace-nowrap flex-shrink-0">
+        Chrono <em className="italic text-gold not-italic" style={{ fontStyle: 'italic' }}>Consigliere</em>
       </Link>
 
       {/* Links */}
-      <div className="flex gap-6 flex-1">
+      <div className="flex gap-7 flex-1">
         {NAV_LINKS.map(link => (
           <Link
             key={link.href}
             href={link.href}
-            className={`text-[11px] font-medium tracking-[0.08em] uppercase transition-colors pb-0.5 border-b
+            className={`text-[11px] tracking-[0.1em] uppercase transition-colors
               ${pathname === link.href
-                ? 'text-cream border-gold'
-                : 'text-cream/50 border-transparent hover:text-cream hover:border-gold/50'
+                ? 'text-cream'
+                : 'text-cream/40 hover:text-cream/75'
               }`}
           >
             {link.label}
@@ -45,18 +45,18 @@ export function Nav({ session }: NavProps) {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-3 ml-auto">
+      <div className="flex items-center gap-4 ml-auto">
         {session?.user ? (
           <>
             <Link
               href="/profile"
-              className="w-[30px] h-[30px] rounded-full bg-gold flex items-center justify-center text-[11px] font-medium text-ink cursor-pointer"
+              className="w-[28px] h-[28px] rounded-full bg-gold/90 flex items-center justify-center text-[10px] font-medium text-ink cursor-pointer"
             >
               {(session.user.name ?? session.user.email ?? 'U')[0].toUpperCase()}
             </Link>
             <button
               onClick={() => signOut({ callbackUrl: '/' })}
-              className="text-[11px] text-cream/40 hover:text-cream/70 transition-colors"
+              className="text-[11px] text-cream/30 hover:text-cream/60 transition-colors tracking-wide"
             >
               Sign out
             </button>
@@ -64,7 +64,7 @@ export function Nav({ session }: NavProps) {
         ) : (
           <Link
             href="/login"
-            className="text-[11px] font-medium tracking-[0.06em] uppercase px-3 py-1.5 border border-white/20 rounded text-cream/70 hover:border-gold hover:text-gold transition-colors"
+            className="text-[11px] tracking-[0.08em] uppercase px-3 py-1.5 border border-white/15 rounded text-cream/50 hover:border-gold/50 hover:text-gold/80 transition-colors"
           >
             Sign in
           </Link>

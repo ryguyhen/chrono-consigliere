@@ -56,24 +56,24 @@ export function BrowseFilters({ brands, styles, movements, conditions, dealers }
   }) {
     if (!items.length) return null;
     return (
-      <div className="mb-5">
-        <div className="text-[10px] font-medium tracking-[0.14em] uppercase text-muted mb-2.5">{title}</div>
-        <div className="space-y-0.5">
+      <div className="mb-6">
+        <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-3">{title}</div>
+        <div className="space-y-px">
           {items.map(item => {
             const active = isActive(paramKey, item.value);
             return (
               <button
                 key={item.value}
                 onClick={() => updateParam(paramKey, item.value)}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[13px] transition-colors
-                  ${active ? 'bg-gold/10 text-gold-dark font-medium' : 'text-ink/80 hover:bg-parchment'}`}
+                className={`w-full flex items-center gap-2 py-1.5 text-left text-[12px] transition-colors
+                  ${active ? 'text-gold' : 'text-ink/65 hover:text-ink'}`}
               >
-                <span className={`w-3.5 h-3.5 rounded-sm border flex-shrink-0 flex items-center justify-center text-[8px]
-                  ${active ? 'bg-gold border-gold text-white' : 'border-ink/20 bg-surface'}`}>
+                <span className={`w-3 h-3 rounded-sm border flex-shrink-0 flex items-center justify-center text-[7px]
+                  ${active ? 'bg-gold border-gold text-ink' : 'border-ink/20'}`}>
                   {active ? '✓' : ''}
                 </span>
                 <span className="flex-1 truncate">{labelMap?.[item.value] ?? item.label ?? item.value}</span>
-                <span className="text-[10px] text-muted font-mono ml-auto">{item.count}</span>
+                <span className="font-mono text-[9px] text-muted/60">{item.count}</span>
               </button>
             );
           })}
@@ -93,28 +93,28 @@ export function BrowseFilters({ brands, styles, movements, conditions, dealers }
   }
 
   return (
-    <aside className="w-[220px] flex-shrink-0 bg-surface border-r border-[var(--border)] h-[calc(100vh-52px)] sticky top-[52px] overflow-y-auto p-4">
+    <aside className="w-[200px] flex-shrink-0 bg-surface border-r border-[var(--border)] h-[calc(100vh-52px)] sticky top-[52px] overflow-y-auto px-5 py-6">
       <FilterSection title="Brand" items={brands} paramKey="brand" />
       <FilterSection title="Style" items={styles} paramKey="style" labelMap={STYLE_LABELS} />
 
       {/* Price range */}
-      <div className="mb-5">
-        <div className="text-[10px] font-medium tracking-[0.14em] uppercase text-muted mb-2.5">Price range</div>
+      <div className="mb-6">
+        <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-3">Price</div>
         <div className="flex gap-2 items-center">
           <input
             type="number"
             placeholder="Min"
             defaultValue={minPrice}
             onBlur={e => updatePrice('minPrice', e.target.value)}
-            className="flex-1 px-2 py-1.5 text-xs border border-[var(--border)] rounded bg-cream text-ink outline-none focus:border-gold w-0 min-w-0"
+            className="flex-1 px-2 py-1.5 text-[12px] border border-[var(--border)] rounded bg-cream text-ink outline-none focus:border-gold w-0 min-w-0"
           />
-          <span className="text-muted text-xs">–</span>
+          <span className="text-muted text-[11px]">–</span>
           <input
             type="number"
             placeholder="Max"
             defaultValue={maxPrice}
             onBlur={e => updatePrice('maxPrice', e.target.value)}
-            className="flex-1 px-2 py-1.5 text-xs border border-[var(--border)] rounded bg-cream text-ink outline-none focus:border-gold w-0 min-w-0"
+            className="flex-1 px-2 py-1.5 text-[12px] border border-[var(--border)] rounded bg-cream text-ink outline-none focus:border-gold w-0 min-w-0"
           />
         </div>
       </div>

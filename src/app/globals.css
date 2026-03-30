@@ -4,16 +4,19 @@
 @tailwind utilities;
 
 :root {
-  --cream: #F5F1E8;
-  --parchment: #EDE8DB;
-  --ink: #1A1612;
-  --ink-2: #2E2820;
-  --muted: #7A7268;
-  --gold: #C4963A;
-  --gold-dark: #8B6914;
-  --surface: #FDFBF7;
-  --border: rgba(26, 22, 18, 0.12);
-  --border-soft: rgba(26, 22, 18, 0.07);
+  --cream: #F4F0E6;
+  --parchment: #EAE4D6;
+  --ink: #18140F;
+  --ink-2: #2C2418;
+  --muted: #80786C;
+  --muted-light: #A09890;
+  --gold: #B8873A;
+  --gold-dark: #8A6420;
+  --gold-pale: rgba(184, 135, 58, 0.12);
+  --surface: #FDFAF4;
+  --surface-alt: #F7F3EB;
+  --border: rgba(24, 20, 15, 0.10);
+  --border-soft: rgba(24, 20, 15, 0.06);
   --success: #2D6A4F;
 }
 
@@ -24,20 +27,22 @@
 body {
   background-color: var(--cream);
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* Focus */
 :focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
+  outline: 1.5px solid var(--gold);
+  outline-offset: 3px;
 }
 
 /* Selection */
 ::selection {
-  background: rgba(196, 150, 58, 0.2);
+  background: rgba(184, 135, 58, 0.18);
 }
