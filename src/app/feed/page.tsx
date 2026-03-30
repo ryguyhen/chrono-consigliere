@@ -41,7 +41,7 @@ export default async function FeedPage() {
   if (!session?.user) redirect('/login');
   const userId = (session.user as any).id;
 
-  const [feedEvents, following, suggestedUsers, trendingBrands] = await Promise.all([
+  const [feedEvents, following, suggestedUsers] = await Promise.all([
     getFeedForUser(userId, undefined, 30),
     prisma.follow.findMany({
       where: { followerId: userId },
@@ -62,18 +62,19 @@ export default async function FeedPage() {
       include: { profile: true },
       take: 4,
     }),
-    // Trending brands in network
-    prisma.watchListing.groupBy({
-      by: ['brand'],
-      where: {
-        isAvailable: true,
-        likes: { some: { userId: { in: following.map(f => f.followingId) } } },
-      },
-      _count: { brand: true },
-      orderBy: { _count: { brand: 'desc' } },
-      take: 6,
-    }),
   ]);
+
+  // Trending brands in network (requires following list)
+  const trendingBrands = await prisma.watchListing.groupBy({
+    by: ['brand'],
+    where: {
+      isAvailable: true,
+      likes: { some: { userId: { in: following.map(f => f.followingId) } } },
+    },
+    _count: { brand: true },
+    orderBy: { _count: { brand: 'desc' } },
+    take: 6,
+  });
 
   // Taste overlaps with first 3 friends
   const overlaps = await Promise.all(
