@@ -26,7 +26,6 @@ export default async function WishlistPage({
 
   const activeCollectionId = searchParams.collection;
 
-  // Fetch saves — filtered by collection if selected
   const saves = await prisma.wishlistItem.findMany({
     where: {
       userId,
@@ -49,14 +48,14 @@ export default async function WishlistPage({
     <div>
       {/* Header */}
       <div className="bg-ink text-cream px-6 py-8">
-        <div className="text-[10px] uppercase tracking-[0.14em] text-gold mb-2">My Wishlist</div>
+        <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-gold/70 mb-2">Your roll</div>
         <h1 className="font-serif text-[1.8rem] font-light mb-1">
-          {activeCollection ? activeCollection.name : 'All saved watches'}
+          {activeCollection ? activeCollection.name : 'Everything saved'}
         </h1>
-        <div className="text-[12px] text-cream/40">
+        <div className="font-mono text-[11px] text-cream/30">
           {activeCollection
-            ? `${activeCollection._count.items} watches · part of your wishlist`
-            : `${totalSaves} watches · last updated recently`}
+            ? `${activeCollection._count.items} watches`
+            : `${totalSaves} watches`}
         </div>
       </div>
 
@@ -89,9 +88,9 @@ export default async function WishlistPage({
       </div>
 
       {/* Grid */}
-      <div className="px-5 py-5">
+      <div className="px-6 py-6">
         {saves.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
             {saves.map(s => (
               <WatchCard
                 key={s.id}
@@ -100,13 +99,15 @@ export default async function WishlistPage({
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 text-muted">
-            <div className="font-serif text-4xl mb-4 opacity-20">⊕</div>
-            <div className="font-serif text-xl font-light mb-2">
-              {activeCollection ? `${activeCollection.name} is empty` : 'Your wishlist is empty'}
+          <div className="text-center py-24 text-muted">
+            <div className="font-serif text-3xl mb-5 opacity-15">◇</div>
+            <div className="font-serif text-xl font-light mb-2 text-ink">
+              {activeCollection ? `${activeCollection.name} is empty` : 'Your roll is empty'}
             </div>
-            <p className="text-sm mb-5">Save watches from the browse page to build your wishlist.</p>
-            <Link href="/browse" className="text-[12px] uppercase tracking-wide text-gold hover:text-gold-dark">
+            <p className="text-[13px] text-muted mb-5">
+              {activeCollection ? 'Add some watches to get started.' : 'Find something worth saving.'}
+            </p>
+            <Link href="/browse" className="font-mono text-[10px] tracking-[0.1em] uppercase text-gold hover:text-gold-dark transition-colors">
               Browse watches →
             </Link>
           </div>

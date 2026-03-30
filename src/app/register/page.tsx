@@ -38,32 +38,32 @@ export default function RegisterPage() {
       <div className="bg-surface border border-[var(--border)] rounded-xl p-10 w-full max-w-[380px]">
         <div className="text-center mb-7">
           <div className="font-serif text-[1.6rem] font-light mb-1">
-            Chrono <span className="italic text-gold">Consigliere</span>
+            Chrono <em className="italic text-gold" style={{ fontStyle: 'italic' }}>Consigliere</em>
           </div>
-          <p className="text-[12px] tracking-[0.06em] text-muted uppercase">
-            Create your account
+          <p className="font-mono text-[9px] tracking-[0.18em] text-muted uppercase">
+            Start your roll
           </p>
         </div>
 
         {done ? (
           <div className="text-center">
-            <div className="text-[2rem] mb-3">✓</div>
+            <div className="font-serif text-[2rem] mb-3 text-gold">◈</div>
             <div className="font-serif text-[1.2rem] font-light mb-2">You're in.</div>
-            <p className="text-[13px] text-muted mb-6">
-              Your account has been created. Sign in with your email below — no password required yet.
+            <p className="text-[13px] text-muted mb-6 leading-relaxed">
+              Account created. Sign in with your email — no password needed yet.
             </p>
             <button
               onClick={() => router.push('/login')}
-              className="w-full bg-gold text-ink text-[12px] font-medium tracking-[0.06em] uppercase py-3 rounded hover:bg-gold-dark transition-colors"
+              className="w-full bg-gold text-ink text-[11px] font-medium tracking-[0.1em] uppercase py-3 rounded hover:bg-gold-dark transition-colors"
             >
-              Sign in now
+              Sign in
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[10px] uppercase tracking-[0.1em] text-muted mb-1.5">
-                Your name
+                Name
               </label>
               <input
                 type="text"
@@ -76,7 +76,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="block text-[10px] uppercase tracking-[0.1em] text-muted mb-1.5">
-                Email address
+                Email
               </label>
               <input
                 type="email"
@@ -97,9 +97,9 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gold text-ink text-[12px] font-medium tracking-[0.06em] uppercase py-3 rounded hover:bg-gold-dark transition-colors disabled:opacity-60"
+              className="w-full bg-gold text-ink text-[11px] font-medium tracking-[0.1em] uppercase py-3 rounded hover:bg-gold-dark transition-colors disabled:opacity-60"
             >
-              {loading ? 'Creating account…' : 'Create account'}
+              {loading ? 'Creating account…' : 'Start your roll'}
             </button>
 
             <p className="text-center text-[12px] text-muted pt-1">

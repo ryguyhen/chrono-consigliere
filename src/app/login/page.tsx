@@ -34,8 +34,8 @@ export default function LoginPage() {
           <div className="font-serif text-[1.6rem] font-light mb-1">
             Chrono <span className="italic text-gold">Consigliere</span>
           </div>
-          <p className="text-[12px] tracking-[0.06em] text-muted uppercase">
-            A social watch discovery engine
+          <p className="font-mono text-[9px] tracking-[0.18em] text-muted uppercase">
+            See what your friends are into.
           </p>
         </div>
 
@@ -104,9 +104,9 @@ export default function LoginPage() {
         </div>
 
         <div className="text-center mt-5 text-[12px] text-muted">
-          No account?{' '}
+          New here?{' '}
           <Link href="/register" className="text-gold hover:text-gold-dark">
-            Request access
+            Start your roll
           </Link>
         </div>
       </div>

@@ -105,7 +105,7 @@ export default async function ProfilePage({ params }: PageProps) {
               {/* Stats */}
               <div className="flex gap-6">
                 {[
-                  [profile.user._count.saves, 'Saved'],
+                  [profile.user._count.saves, 'In roll'],
                   [profile.user._count.likes, 'Liked'],
                   [profile.user._count.following, 'Following'],
                   [profile.user._count.followers, 'Followers'],
@@ -133,7 +133,7 @@ export default async function ProfilePage({ params }: PageProps) {
           {/* Taste DNA */}
           {profile.tasteTags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-5 pt-4 border-t border-white/10">
-              <span className="text-[10px] uppercase tracking-[0.1em] text-cream/30 mr-1 self-center">Taste DNA</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-cream/30 mr-1 self-center">Taste</span>
               {profile.tasteTags.map((tag, i) => (
                 <span
                   key={tag}
@@ -151,7 +151,7 @@ export default async function ProfilePage({ params }: PageProps) {
           {/* Taste overlap (only when viewing another person) */}
           {overlap && (overlap.overlapCount ?? 0) > 0 && (
             <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-3">
-              <span className="text-[10px] uppercase tracking-[0.1em] text-cream/30">Your overlap</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-cream/30">Shared taste</span>
               <span className="font-mono text-[14px] text-gold">{overlap.score}%</span>
               <span className="text-[12px] text-cream/50">
                 {overlap.sharedBrands.slice(0, 2).join(', ')}
@@ -165,7 +165,7 @@ export default async function ProfilePage({ params }: PageProps) {
       {/* Content tabs */}
       <div className="border-b border-[var(--border)] bg-surface">
         <div className="max-w-[900px] mx-auto flex">
-          {['Saved', 'Liked', 'Collections'].map(tab => (
+          {['Roll', 'Liked', 'Collections'].map(tab => (
             <div key={tab} className="px-5 py-3.5 text-[12px] uppercase tracking-[0.08em] cursor-pointer border-b-2 border-gold text-ink first:border-b-2">
               {tab}
             </div>
@@ -177,8 +177,8 @@ export default async function ProfilePage({ params }: PageProps) {
       <div className="max-w-[900px] mx-auto px-6 py-6">
         {saves.length > 0 ? (
           <>
-            <div className="text-[10px] uppercase tracking-[0.12em] text-muted mb-4">
-              {saves.length} saved watches
+            <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted mb-4">
+              {saves.length} in roll
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {saves.map(s => (
@@ -196,16 +196,16 @@ export default async function ProfilePage({ params }: PageProps) {
           </>
         ) : (
           <div className="text-center py-16 text-muted">
-            <div className="font-serif text-3xl mb-3 opacity-20">⊕</div>
-            <div className="font-serif text-lg font-light mb-1">No saves yet</div>
-            <Link href="/browse" className="text-[12px] text-gold hover:text-gold-dark">Browse watches →</Link>
+            <div className="font-serif text-3xl mb-3 opacity-15">◇</div>
+            <div className="font-serif text-lg font-light mb-2 text-ink">Roll is empty</div>
+            <Link href="/browse" className="font-mono text-[10px] tracking-[0.1em] uppercase text-gold hover:text-gold-dark transition-colors">Browse watches →</Link>
           </div>
         )}
 
         {/* Collections */}
         {collections.length > 0 && (
           <div className="mt-10">
-            <div className="text-[10px] uppercase tracking-[0.12em] text-muted mb-4">Collections</div>
+            <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted mb-4">Collections</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {collections.map((col, i) => {
                 const bg = ['#1A1612', '#1A3A5C', '#2D6A4F', '#5C1A1A', '#3A1A5C'][i % 5];

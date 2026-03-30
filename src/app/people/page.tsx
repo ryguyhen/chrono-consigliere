@@ -82,7 +82,7 @@ export default function PeoplePage() {
   return (
     <div className="max-w-[640px] mx-auto px-6 py-8">
       <h1 className="font-serif text-[1.6rem] font-light mb-1">People</h1>
-      <p className="text-[13px] text-muted mb-6">Find collectors to follow and see what they're into.</p>
+      <p className="text-[13px] text-muted mb-6">Find people to follow. See what they're saving.</p>
 
       {/* Search */}
       <div className="relative mb-8">
@@ -102,13 +102,13 @@ export default function PeoplePage() {
       {/* Results */}
       {query.length >= 2 && results.length === 0 && !loading && (
         <div className="text-center py-12 text-muted text-[13px]">
-          No users found for "{query}"
+          Nobody found for "{query}"
         </div>
       )}
 
       {query.length < 2 && suggested.length > 0 && (
-        <div className="text-[10px] uppercase tracking-[0.12em] text-muted mb-3 font-medium">
-          Suggested collectors
+        <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted mb-3">
+          Worth following
         </div>
       )}
 

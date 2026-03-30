@@ -17,11 +17,11 @@ function timeAgo(date: Date): string {
 
 const EVENT_COPY: Record<string, string> = {
   LIKED: 'liked',
-  SAVED: 'saved',
+  SAVED: 'added to their roll',
   PURCHASED: 'bought',
-  INFLUENCED_PURCHASE: 'bought something you had saved',
-  FOLLOWED: 'started following',
-  ADDED_TO_COLLECTION: 'added to collection',
+  INFLUENCED_PURCHASE: 'bought something in your roll',
+  FOLLOWED: 'is now following',
+  ADDED_TO_COLLECTION: 'added to',
 };
 
 function Avatar({ name, size = 34 }: { name: string | null; size?: number }) {
@@ -93,15 +93,15 @@ export default async function FeedPage() {
 
         {/* MAIN FEED */}
         <div>
-          <h1 className="font-serif text-[1.5rem] font-light mb-8">Friends Activity</h1>
+          <h1 className="font-serif text-[1.5rem] font-light mb-8">Your circle</h1>
 
           {feedEvents.length === 0 ? (
             <div className="text-center py-24 text-muted">
               <div className="font-serif text-3xl mb-5 opacity-15">◈</div>
-              <div className="font-serif text-xl font-light mb-2">Your feed is quiet</div>
-              <p className="text-[13px] text-muted mb-6">Follow friends to see what they're into.</p>
-              <Link href="/browse" className="font-mono text-[10px] tracking-[0.1em] uppercase text-gold hover:text-gold-dark">
-                Browse watches →
+              <div className="font-serif text-xl font-light mb-2 text-ink">Nothing yet</div>
+              <p className="text-[13px] text-muted mb-6">Follow people to see what they're saving.</p>
+              <Link href="/people" className="font-mono text-[10px] tracking-[0.1em] uppercase text-gold hover:text-gold-dark">
+                Find people →
               </Link>
             </div>
           ) : (
@@ -122,7 +122,7 @@ export default async function FeedPage() {
                     <div className="flex-1 min-w-0">
                       {isInfluence && (
                         <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-gold/80 mb-2">
-                          Influence
+                          In your roll
                         </div>
                       )}
 
@@ -176,10 +176,10 @@ export default async function FeedPage() {
         {/* SIDEBAR */}
         <div className="space-y-8">
 
-          {/* Taste overlap */}
+          {/* Shared taste */}
           {overlaps.some(o => (o.overlap.overlapCount ?? 0) > 0) && (
             <div>
-              <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-4">Taste overlap</div>
+              <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-4">Shared taste</div>
               <div className="space-y-4">
                 {overlaps.filter(o => (o.overlap.overlapCount ?? 0) > 0).map(({ friend, overlap }) => (
                   <div key={friend.id} className="flex items-start gap-3">
@@ -198,10 +198,10 @@ export default async function FeedPage() {
             </div>
           )}
 
-          {/* Trending brands */}
+          {/* What your circle's into */}
           {trendingBrands.length > 0 && (
             <div>
-              <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-4">Moving in your circle</div>
+              <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-4">What your circle's into</div>
               <div className="space-y-2">
                 {trendingBrands.map((b, i) => (
                   <Link
@@ -218,10 +218,10 @@ export default async function FeedPage() {
             </div>
           )}
 
-          {/* People to follow */}
+          {/* Worth following */}
           {suggestedUsers.length > 0 && (
             <div>
-              <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-4">People to follow</div>
+              <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-4">Worth following</div>
               <div className="space-y-4">
                 {suggestedUsers.map(user => (
                   <div key={user.id} className="flex items-center gap-3">
@@ -250,7 +250,7 @@ export default async function FeedPage() {
             </div>
           )}
 
-          {/* Who you follow */}
+          {/* Following */}
           {following.length > 0 && (
             <div>
               <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-4">

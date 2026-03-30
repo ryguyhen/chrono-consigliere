@@ -127,7 +127,7 @@ export function WatchCard({ watch, onLike, onSave }: WatchCardProps) {
           </div>
           {friendLikeCount > 0 ? (
             <span className="text-[10px] text-muted italic">
-              {friendLikeCount === 1 ? 'Saved in your circle' : `${friendLikeCount} in your circle`}
+              {friendLikeCount === 1 ? 'In your circle' : `${friendLikeCount} in your circle`}
             </span>
           ) : likeCount > 0 ? (
             <span className="text-[10px] text-muted/70 font-mono">{likeCount}</span>
