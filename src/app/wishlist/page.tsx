@@ -47,12 +47,12 @@ export default async function WishlistPage({
   return (
     <div>
       {/* Header */}
-      <div className="bg-ink text-cream px-6 py-8">
-        <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-gold/70 mb-2">Your roll</div>
-        <h1 className="text-[1.7rem] font-light tracking-[-0.02em] mb-1">
+      <div className="bg-black text-white px-6 py-8 border-b border-white/[0.07]">
+        <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-gold mb-2">Your roll</div>
+        <h1 className="text-[1.7rem] font-semibold tracking-[-0.03em] mb-1">
           {activeCollection ? activeCollection.name : 'Everything saved'}
         </h1>
-        <div className="font-mono text-[11px] text-cream/30">
+        <div className="font-mono text-[11px] text-white/30">
           {activeCollection
             ? `${activeCollection._count.items} watches`
             : `${totalSaves} watches`}
@@ -63,10 +63,10 @@ export default async function WishlistPage({
       <div className="bg-surface border-b border-[var(--border)] px-5 py-3 flex gap-2 overflow-x-auto">
         <Link
           href="/wishlist"
-          className={`px-3.5 py-1.5 rounded-full text-[11px] border whitespace-nowrap transition-colors
+          className={`px-3.5 py-1.5 rounded-full font-mono text-[10px] tracking-[0.06em] border whitespace-nowrap transition-colors
             ${!activeCollectionId
-              ? 'bg-ink text-cream border-ink'
-              : 'border-[var(--border)] text-ink/70 hover:border-gold hover:text-gold'}`}
+              ? 'bg-gold text-black border-gold font-bold'
+              : 'border-[var(--border)] text-muted hover:border-gold/50 hover:text-gold'}`}
         >
           All ({totalSaves})
         </Link>
@@ -74,15 +74,15 @@ export default async function WishlistPage({
           <Link
             key={col.id}
             href={`/wishlist?collection=${col.id}`}
-            className={`px-3.5 py-1.5 rounded-full text-[11px] border whitespace-nowrap transition-colors
+            className={`px-3.5 py-1.5 rounded-full font-mono text-[10px] tracking-[0.06em] border whitespace-nowrap transition-colors
               ${activeCollectionId === col.id
-                ? 'bg-ink text-cream border-ink'
-                : 'border-[var(--border)] text-ink/70 hover:border-gold hover:text-gold'}`}
+                ? 'bg-gold text-black border-gold font-bold'
+                : 'border-[var(--border)] text-muted hover:border-gold/50 hover:text-gold'}`}
           >
             {col.name} ({col._count.items})
           </Link>
         ))}
-        <button className="px-3.5 py-1.5 rounded-full text-[11px] border border-dashed border-[var(--border)] text-muted hover:border-gold hover:text-gold transition-colors whitespace-nowrap">
+        <button className="px-3.5 py-1.5 rounded-full font-mono text-[10px] tracking-[0.06em] border border-dashed border-[var(--border)] text-muted hover:border-gold/50 hover:text-gold transition-colors whitespace-nowrap">
           + New list
         </button>
       </div>

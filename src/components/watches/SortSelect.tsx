@@ -17,7 +17,7 @@ function SortSelectInner({ defaultValue }: { defaultValue: string }) {
     <select
       defaultValue={defaultValue}
       onChange={onChange}
-      className="px-3 py-2 text-[12px] border border-[var(--border)] rounded bg-cream text-ink outline-none cursor-pointer"
+      className="px-3 py-2 text-[12px] border border-[var(--border)] rounded bg-parchment text-ink outline-none cursor-pointer focus:border-gold"
     >
       <option value="newest">Newest listed</option>
       <option value="price-asc">Price: low to high</option>

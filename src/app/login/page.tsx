@@ -28,10 +28,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-52px)] flex items-center justify-center bg-parchment p-6">
+    <div className="min-h-[calc(100vh-52px)] flex items-center justify-center bg-cream p-6">
       <div className="bg-surface border border-[var(--border)] rounded-xl p-10 w-full max-w-[380px]">
         <div className="text-center mb-7">
-          <div className="text-[18px] font-normal tracking-[0.01em] mb-1">
+          <div className="text-[18px] font-semibold tracking-[-0.01em] mb-1">
             Chrono <span className="text-gold">Consigliere</span>
           </div>
           <p className="font-mono text-[9px] tracking-[0.18em] text-muted uppercase">
@@ -41,7 +41,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-muted mb-1.5">
+            <label className="block font-mono text-[9px] uppercase tracking-[0.12em] text-muted mb-1.5">
               Email
             </label>
             <input
@@ -50,11 +50,11 @@ export default function LoginPage() {
               onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
-              className="w-full px-3 py-2.5 border border-[var(--border)] rounded bg-cream text-[13px] text-ink outline-none focus:border-gold transition-colors"
+              className="w-full px-3 py-2.5 border border-[var(--border)] rounded bg-parchment text-[13px] text-ink outline-none focus:border-gold transition-colors placeholder:text-muted/50"
             />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.1em] text-muted mb-1.5">
+            <label className="block font-mono text-[9px] uppercase tracking-[0.12em] text-muted mb-1.5">
               Password
             </label>
             <input
@@ -63,12 +63,12 @@ export default function LoginPage() {
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full px-3 py-2.5 border border-[var(--border)] rounded bg-cream text-[13px] text-ink outline-none focus:border-gold transition-colors"
+              className="w-full px-3 py-2.5 border border-[var(--border)] rounded bg-parchment text-[13px] text-ink outline-none focus:border-gold transition-colors"
             />
           </div>
 
           {error && (
-            <div className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded px-3 py-2">
+            <div className="text-[12px] text-red-400 bg-red-950/50 border border-red-900/50 rounded px-3 py-2">
               {error}
             </div>
           )}
@@ -76,7 +76,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gold text-ink text-[12px] font-medium tracking-[0.06em] uppercase py-3 rounded hover:bg-gold-dark transition-colors disabled:opacity-60"
+            className="w-full bg-gold text-black text-[11px] font-bold tracking-[0.1em] uppercase py-3 rounded hover:bg-gold-dark transition-colors disabled:opacity-50"
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
@@ -86,18 +86,17 @@ export default function LoginPage() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-[var(--border)]" />
           </div>
-          <div className="relative flex justify-center text-[11px] text-muted bg-surface px-2">or</div>
+          <div className="relative flex justify-center font-mono text-[10px] text-muted bg-surface px-2">or</div>
         </div>
 
         <button
           onClick={() => signIn('google', { callbackUrl: '/' })}
-          className="w-full py-2.5 border border-[var(--border)] rounded text-[12px] text-ink/70 hover:border-gold hover:text-gold transition-colors"
+          className="w-full py-2.5 border border-[var(--border)] rounded text-[12px] text-ink/70 hover:border-gold/50 hover:text-gold transition-colors"
         >
           Continue with Google
         </button>
 
-        {/* Demo hint */}
-        <div className="mt-5 p-3 bg-parchment rounded text-[11px] text-muted space-y-0.5">
+        <div className="mt-5 p-3 bg-parchment rounded text-[11px] text-muted space-y-0.5 border border-[var(--border)]">
           <div className="font-medium text-ink/60">Demo credentials</div>
           <div>Email: <code className="font-mono text-gold">ryan@example.com</code></div>
           <div>Password: <code className="font-mono text-gold">password123</code></div>

@@ -87,19 +87,19 @@ export default async function ProfilePage({ params }: PageProps) {
   return (
     <div>
       {/* Profile header */}
-      <div className="bg-ink text-cream px-6 py-8">
+      <div className="bg-black text-white px-6 py-8 border-b border-white/[0.07]">
         <div className="max-w-[900px] mx-auto">
           <div className="flex items-start gap-5">
             {/* Avatar */}
-            <div className="w-[72px] h-[72px] rounded-full bg-gold flex items-center justify-center font-serif text-[2rem] font-light text-cream flex-shrink-0 border-2 border-white/10">
+            <div className="w-[72px] h-[72px] rounded-full bg-gold flex items-center justify-center text-[1.6rem] font-bold text-black flex-shrink-0">
               {displayName[0].toUpperCase()}
             </div>
 
             <div className="flex-1 min-w-0">
-              <h1 className="text-[1.7rem] font-light tracking-[-0.02em]">{displayName}</h1>
-              <div className="font-mono text-[12px] text-cream/40 mb-2">@{profile.username}</div>
+              <h1 className="text-[1.7rem] font-semibold tracking-[-0.03em] mb-0.5">{displayName}</h1>
+              <div className="font-mono text-[11px] text-white/35 mb-2">@{profile.username}</div>
               {profile.bio && (
-                <p className="text-[13px] text-cream/60 max-w-[420px] leading-relaxed mb-3">{profile.bio}</p>
+                <p className="text-[13px] text-white/55 max-w-[420px] leading-relaxed mb-3">{profile.bio}</p>
               )}
 
               {/* Stats */}
@@ -111,8 +111,8 @@ export default async function ProfilePage({ params }: PageProps) {
                   [profile.user._count.followers, 'Followers'],
                 ].map(([n, l]) => (
                   <div key={l as string}>
-                    <div className="text-[1.15rem] font-normal">{n}</div>
-                    <div className="text-[10px] tracking-[0.08em] uppercase text-cream/40">{l}</div>
+                    <div className="text-[1.15rem] font-semibold">{n}</div>
+                    <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/30 mt-0.5">{l}</div>
                   </div>
                 ))}
               </div>
@@ -121,7 +121,7 @@ export default async function ProfilePage({ params }: PageProps) {
             {/* Actions */}
             <div className="flex-shrink-0">
               {isOwnProfile ? (
-                <button className="border border-white/20 text-cream text-[11px] uppercase tracking-wide px-4 py-2 rounded hover:border-gold hover:text-gold transition-colors">
+                <button className="border border-white/15 text-white/60 text-[11px] font-medium uppercase tracking-wide px-4 py-2 rounded hover:border-gold/60 hover:text-gold transition-colors">
                   Edit profile
                 </button>
               ) : (
@@ -130,17 +130,17 @@ export default async function ProfilePage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Taste DNA */}
+          {/* Taste */}
           {profile.tasteTags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-5 pt-4 border-t border-white/10">
-              <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-cream/30 mr-1 self-center">Taste</span>
+            <div className="flex flex-wrap gap-2 mt-5 pt-4 border-t border-white/[0.07]">
+              <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-white/25 mr-1 self-center">Taste</span>
               {profile.tasteTags.map((tag, i) => (
                 <span
                   key={tag}
-                  className={`text-[10px] px-2.5 py-1 rounded-full border
+                  className={`font-mono text-[9px] px-2.5 py-1 rounded-full border tracking-[0.06em]
                     ${i < 3
-                      ? 'bg-gold/15 border-gold/25 text-gold'
-                      : 'bg-white/5 border-white/10 text-cream/50'}`}
+                      ? 'bg-gold/10 border-gold/25 text-gold'
+                      : 'bg-white/[0.04] border-white/10 text-white/40'}`}
                 >
                   {tag}
                 </span>
@@ -148,12 +148,12 @@ export default async function ProfilePage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Taste overlap (only when viewing another person) */}
+          {/* Shared taste */}
           {overlap && (overlap.overlapCount ?? 0) > 0 && (
-            <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-3">
-              <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-cream/30">Shared taste</span>
-              <span className="font-mono text-[14px] text-gold">{overlap.score}%</span>
-              <span className="text-[12px] text-cream/50">
+            <div className="mt-4 pt-4 border-t border-white/[0.07] flex items-center gap-3">
+              <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-white/25">Shared taste</span>
+              <span className="font-mono text-[14px] text-gold font-medium">{overlap.score}%</span>
+              <span className="text-[12px] text-white/45">
                 {overlap.sharedBrands.slice(0, 2).join(', ')}
                 {overlap.sharedStyles.length > 0 && ` · ${overlap.sharedStyles[0]}`}
               </span>

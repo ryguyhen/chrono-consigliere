@@ -92,8 +92,8 @@ export default async function BrowsePage({ searchParams }: PageProps) {
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-24 text-muted">
-            <div className="font-serif text-3xl mb-5 opacity-15">◇</div>
-            <div className="font-serif text-xl font-light mb-2 text-ink">No watches found</div>
+            <div className="text-3xl mb-5 opacity-15">◇</div>
+            <div className="text-[1.1rem] font-semibold mb-2 text-ink">No watches found</div>
             <p className="text-[13px] text-muted mb-5">Try adjusting your filters.</p>
             <Link href="/browse" className="font-mono text-[10px] tracking-[0.1em] uppercase text-gold hover:text-gold-dark transition-colors">
               Clear all filters

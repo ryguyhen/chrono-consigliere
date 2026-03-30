@@ -59,10 +59,10 @@ export function WatchCard({ watch, onLike, onSave }: WatchCardProps) {
   return (
     <Link
       href={`/watch/${watch.id}`}
-      className="group block bg-surface overflow-hidden transition-all duration-200 hover:-translate-y-px"
+      className="group block overflow-hidden transition-all duration-200 hover:-translate-y-px"
     >
       {/* Image */}
-      <div className="relative aspect-[4/5] bg-parchment overflow-hidden">
+      <div className="relative aspect-[4/5] bg-[#1A1A1A] overflow-hidden">
         {primaryImage ? (
           <Image
             src={primaryImage.url}
@@ -73,40 +73,42 @@ export function WatchCard({ watch, onLike, onSave }: WatchCardProps) {
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-20 h-20 rounded-full border border-ink/8 flex items-center justify-center">
-              <div className="w-12 h-12 rounded-full border border-ink/[0.05]" />
+            <div className="w-20 h-20 rounded-full border border-white/8 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full border border-white/[0.05]" />
             </div>
           </div>
         )}
 
-        {/* Hover actions */}
-        <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/5 transition-colors duration-200" />
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
+
+        {/* Hover action buttons */}
         <div className="absolute top-3 right-3 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <button
             onClick={handleLike}
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-[14px] transition-all backdrop-blur-sm
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] transition-all
               ${liked
-                ? 'bg-red-50/95 text-red-500 shadow-sm'
-                : 'bg-surface/95 text-ink/50 hover:text-red-400 shadow-sm'}`}
+                ? 'bg-red-500 text-white shadow-sm'
+                : 'bg-black/70 text-white/60 hover:text-red-400 shadow-sm'}`}
             title={liked ? 'Unlike' : 'Like'}
           >
             {liked ? '♥' : '♡'}
           </button>
           <button
             onClick={handleSave}
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-[13px] transition-all backdrop-blur-sm
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] transition-all
               ${saved
-                ? 'bg-gold/90 text-ink shadow-sm'
-                : 'bg-surface/95 text-ink/50 hover:text-gold shadow-sm'}`}
-            title={saved ? 'Remove from wishlist' : 'Save'}
+                ? 'bg-gold text-black shadow-sm font-bold'
+                : 'bg-black/70 text-white/60 hover:text-gold shadow-sm'}`}
+            title={saved ? 'Remove from roll' : 'Add to roll'}
           >
             {saved ? '◈' : '◇'}
           </button>
         </div>
 
-        {/* Condition — minimal */}
+        {/* Condition badge */}
         {watch.condition && watch.condition !== 'GOOD' && watch.condition !== 'VERY_GOOD' && (
-          <div className="absolute bottom-3 left-3 text-[9px] tracking-[0.08em] uppercase px-2 py-0.5 bg-ink/80 text-cream/80 rounded-sm backdrop-blur-sm">
+          <div className="absolute bottom-3 left-3 font-mono text-[8px] tracking-[0.1em] uppercase px-2 py-0.5 bg-black/75 text-white/75 rounded-sm">
             {CONDITION_LABEL[watch.condition]}
           </div>
         )}
@@ -114,23 +116,23 @@ export function WatchCard({ watch, onLike, onSave }: WatchCardProps) {
 
       {/* Info */}
       <div className="pt-3 pb-1">
-        <div className="text-[9px] font-medium tracking-[0.14em] uppercase text-muted mb-1">
+        <div className="font-mono text-[9px] font-medium tracking-[0.14em] uppercase text-muted mb-1">
           {watch.brand}
         </div>
-        <div className="text-[14px] font-normal text-ink leading-snug mb-2 tracking-[-0.01em]">
+        <div className="text-[14px] font-medium text-ink leading-snug mb-2 tracking-[-0.01em]">
           {watch.model || watch.sourceTitle}
         </div>
 
         <div className="flex items-baseline justify-between">
-          <div className="text-[16px] font-light text-ink tracking-[-0.01em]">
+          <div className="text-[15px] font-normal text-ink tracking-[-0.01em]">
             {watch.sourcePrice ?? formatPrice(watch.price, watch.currency)}
           </div>
           {friendLikeCount > 0 ? (
-            <span className="text-[10px] text-muted italic">
-              {friendLikeCount === 1 ? 'In your circle' : `${friendLikeCount} in your circle`}
+            <span className="text-[10px] text-gold font-mono">
+              {friendLikeCount === 1 ? 'In your circle' : `${friendLikeCount} in circle`}
             </span>
           ) : likeCount > 0 ? (
-            <span className="text-[10px] text-muted/70 font-mono">{likeCount}</span>
+            <span className="font-mono text-[9px] text-muted">{likeCount}</span>
           ) : null}
         </div>
       </div>

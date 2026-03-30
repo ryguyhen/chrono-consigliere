@@ -17,11 +17,12 @@ interface UserResult {
 
 function Avatar({ name, size = 36 }: { name: string | null; size?: number }) {
   const initials = (name ?? 'U').slice(0, 2).toUpperCase();
-  const colors = ['bg-gold', 'bg-[#5A6E8C]', 'bg-[#6E5A8C]', 'bg-[#5A8C6E]', 'bg-[#8C6E5A]'];
-  const color = colors[initials.charCodeAt(0) % colors.length];
+  const hue = (initials.charCodeAt(0) * 37 + (initials.charCodeAt(1) || 0) * 13) % 360;
   return (
-    <div className={`rounded-full ${color} flex items-center justify-center flex-shrink-0 text-cream font-serif`}
-      style={{ width: size, height: size, fontSize: size * 0.35 }}>
+    <div
+      className="rounded-full flex items-center justify-center flex-shrink-0 text-white/70 font-medium"
+      style={{ width: size, height: size, fontSize: size * 0.32, background: `hsl(${hue}, 15%, 22%)` }}
+    >
       {initials}
     </div>
   );
@@ -91,7 +92,7 @@ export default function PeoplePage() {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search by name or username…"
-          className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-surface text-[13px] text-ink outline-none focus:border-gold transition-colors pr-10"
+          className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-parchment text-[13px] text-ink outline-none focus:border-gold transition-colors pr-10 placeholder:text-muted/50"
           autoFocus
         />
         {loading && (
@@ -131,7 +132,7 @@ export default function PeoplePage() {
                 {user.tasteTags.length > 0 && (
                   <div className="flex gap-1.5 mt-1.5 flex-wrap">
                     {user.tasteTags.slice(0, 3).map(tag => (
-                      <span key={tag} className="text-[9px] uppercase tracking-wide px-2 py-0.5 rounded-full border border-gold/30 text-gold/70">
+                      <span key={tag} className="font-mono text-[8px] uppercase tracking-[0.08em] px-2 py-0.5 rounded-full border border-gold/25 text-gold/60">
                         {tag}
                       </span>
                     ))}
@@ -142,10 +143,10 @@ export default function PeoplePage() {
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 <button
                   onClick={() => toggleFollow(user.id, isFollowing)}
-                  className={`text-[10px] uppercase tracking-wide px-3 py-1.5 rounded border transition-colors
+                  className={`font-mono text-[9px] tracking-[0.08em] uppercase px-3 py-1.5 rounded border transition-colors
                     ${isFollowing
-                      ? 'bg-gold border-gold text-ink'
-                      : 'border-[var(--border)] text-muted hover:border-gold hover:text-gold'
+                      ? 'bg-gold border-gold text-black font-bold'
+                      : 'border-[var(--border)] text-muted hover:border-gold/60 hover:text-gold'
                     }`}
                 >
                   {isFollowing ? 'Following' : 'Follow'}

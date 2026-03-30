@@ -4,26 +4,24 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        // Both serif and sans resolve to Helvetica — fully sans-serif system
         sans: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
         serif: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
-        // DM Mono kept for metadata labels, timestamps, counts
         mono: ['var(--font-dm-mono)', 'monospace'],
       },
       colors: {
-        cream: '#F4F0E6',
-        parchment: '#EAE4D6',
+        cream: '#111111',
+        parchment: '#191919',
         ink: {
-          DEFAULT: '#18140F',
-          2: '#2C2418',
+          DEFAULT: '#F0F0F0',
+          2: '#C8C8C8',
         },
-        muted: '#80786C',
+        muted: '#787878',
         gold: {
-          DEFAULT: '#B8873A',
-          dark: '#8A6420',
-          pale: 'rgba(184,135,58,0.12)',
+          DEFAULT: '#F5C518',
+          dark: '#C9A020',
+          pale: 'rgba(245,197,24,0.10)',
         },
-        surface: '#FDFAF4',
+        surface: '#1C1C1C',
       },
       fontSize: {
         '2xs': ['10px', { lineHeight: '1.4', letterSpacing: '0.06em' }],
@@ -37,9 +35,6 @@ module.exports = {
       },
       borderRadius: {
         DEFAULT: '3px',
-      },
-      transitionDuration: {
-        DEFAULT: '200ms',
       },
     },
   },

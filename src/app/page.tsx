@@ -24,27 +24,27 @@ export default async function LandingPage() {
   return (
     <div>
       {/* HERO */}
-      <section className="bg-ink text-cream px-8 py-28 relative overflow-hidden">
-        <div className="relative z-10 max-w-[600px] mx-auto text-center">
-          <h1 className="text-[clamp(2.8rem,7vw,5rem)] font-light leading-[1.05] mb-8 text-cream tracking-[-0.02em]">
+      <section className="bg-black text-white px-8 py-28 border-b border-white/[0.06]">
+        <div className="max-w-[600px] mx-auto text-center">
+          <h1 className="text-[clamp(2.8rem,7vw,5rem)] font-semibold leading-[1.02] mb-8 tracking-[-0.03em]">
             Watch what your<br />
             <span className="text-gold">friends are into.</span>
           </h1>
-          <p className="text-[14px] text-cream/50 max-w-[400px] mx-auto mb-12 leading-relaxed font-light">
+          <p className="text-[14px] text-white/50 max-w-[400px] mx-auto mb-12 leading-relaxed font-normal">
             Live inventory from the world's best dealers. See what your circle is saving,
             what's heating up, and what's worth a look.
           </p>
           <div className="flex gap-4 justify-center">
             <Link
               href="/browse"
-              className="bg-gold text-ink text-[11px] font-medium tracking-[0.1em] uppercase px-6 py-3 rounded hover:bg-gold-dark transition-colors"
+              className="bg-gold text-black text-[11px] font-bold tracking-[0.1em] uppercase px-6 py-3 rounded hover:bg-gold-dark transition-colors"
             >
               Browse watches
             </Link>
             {!session && (
               <Link
                 href="/register"
-                className="border border-white/15 text-cream/70 text-[11px] font-medium tracking-[0.1em] uppercase px-6 py-3 rounded hover:border-gold/50 hover:text-gold/80 transition-colors"
+                className="border border-white/15 text-white/60 text-[11px] font-medium tracking-[0.1em] uppercase px-6 py-3 rounded hover:border-gold/60 hover:text-gold transition-colors"
               >
                 Start your roll
               </Link>
@@ -52,14 +52,14 @@ export default async function LandingPage() {
           </div>
 
           {/* Stats */}
-          <div className="flex justify-center gap-16 mt-20 pt-8 border-t border-white/8">
+          <div className="flex justify-center gap-16 mt-20 pt-8 border-t border-white/[0.07]">
             {[
               [totalListings.toLocaleString(), 'In-stock watches'],
               ['20+', 'Curated dealers'],
             ].map(([n, l]) => (
               <div key={l}>
-                <div className="font-serif text-[2.2rem] font-light text-cream/90">{n}</div>
-                <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-cream/30 mt-1">{l}</div>
+                <div className="text-[2.2rem] font-semibold text-white tracking-[-0.03em]">{n}</div>
+                <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-white/30 mt-1">{l}</div>
               </div>
             ))}
           </div>
@@ -68,7 +68,7 @@ export default async function LandingPage() {
 
       {/* WHAT'S MOVING */}
       <div className="bg-parchment border-b border-[var(--border)] py-3 px-6 overflow-x-hidden">
-        <div className="flex gap-10 text-[11px] text-muted/70 whitespace-nowrap">
+        <div className="flex gap-10 text-[11px] text-muted whitespace-nowrap">
           {[
             'James added a Rolex Explorer II to his roll',
             'Marcus bought a Lange 1 — it was on Ryan\'s roll',
@@ -77,7 +77,7 @@ export default async function LandingPage() {
             'Just dropped: Heuer Autavia from Craft & Tailored',
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-2.5 flex-shrink-0">
-              <span className="w-1 h-1 rounded-full bg-gold/40 flex-shrink-0" />
+              <span className="w-1 h-1 rounded-full bg-gold/50 flex-shrink-0" />
               {item}
             </div>
           ))}
@@ -90,7 +90,7 @@ export default async function LandingPage() {
           <div className="flex justify-between items-end mb-8">
             <div>
               <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-2">Getting around</div>
-              <h2 className="text-[1.6rem] font-normal tracking-[-0.02em]">What your circle's into</h2>
+              <h2 className="text-[1.6rem] font-semibold tracking-[-0.02em]">What your circle's into</h2>
             </div>
             <Link href="/browse?sort=most-liked" className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-gold transition-colors">
               All watches →
@@ -104,7 +104,6 @@ export default async function LandingPage() {
         </section>
       )}
 
-      {/* DIVIDER */}
       {newArrivals.length > 0 && trending.length > 0 && (
         <div className="max-w-[1200px] mx-auto px-8">
           <div className="border-t border-[var(--border)]" />
@@ -117,7 +116,7 @@ export default async function LandingPage() {
           <div className="flex justify-between items-end mb-8">
             <div>
               <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-2">Just dropped</div>
-              <h2 className="text-[1.6rem] font-normal tracking-[-0.02em]">New in</h2>
+              <h2 className="text-[1.6rem] font-semibold tracking-[-0.02em]">New in</h2>
             </div>
             <Link href="/browse?sort=newest" className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-gold transition-colors">
               All watches →
