@@ -65,19 +65,20 @@ export function WatchCard({ watch, onSave }: WatchCardProps) {
         )}
 
         {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
 
-        {/* Save button — revealed on hover */}
+        {/* Save button */}
         <button
           onClick={handleSave}
-          className={`absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-150
-            px-3 py-1.5 rounded text-[10px] font-bold tracking-[0.08em] uppercase
+          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150
             ${saved
-              ? 'bg-gold text-black'
-              : 'bg-black/70 text-white hover:bg-gold hover:text-black'}`}
+              ? 'bg-gold text-black opacity-100'
+              : 'bg-black/60 text-white/70 opacity-0 group-hover:opacity-100 hover:bg-gold hover:text-black'}`}
           title={saved ? 'Remove from roll' : 'Add to roll'}
         >
-          {saved ? 'In roll' : '+ Roll'}
+          {saved
+            ? <span className="text-[13px] font-bold leading-none">✓</span>
+            : <span className="text-[18px] font-light leading-none">+</span>}
         </button>
 
         {/* Condition badge */}
