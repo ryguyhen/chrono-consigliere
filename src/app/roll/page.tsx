@@ -82,7 +82,7 @@ export default async function RollPage({ searchParams }: PageProps) {
   let feedEvents: any[] = [];
   let following: any[] = [];
   let suggestedUsers: any[] = [];
-  let trendingBrands: any[] = [];
+  let trendingBrands: any = [];
   let overlaps: any[] = [];
 
   if (activeTab === 'friends') {
