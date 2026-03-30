@@ -57,35 +57,37 @@ export default async function BrowsePage({ searchParams }: PageProps) {
 
   return (
     <div className="flex min-h-[calc(100vh-52px)]">
-      <Suspense fallback={<div className="w-[200px] flex-shrink-0 bg-surface border-r border-[var(--border)]" />}>
+      <Suspense fallback={<div className="hidden md:block w-[200px] flex-shrink-0 bg-surface border-r border-[var(--border)]" />}>
         <BrowseFilters {...filterOptions} />
       </Suspense>
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Search + Sort bar */}
-        <div className="bg-surface border-b border-[var(--border)] px-6 py-3 flex gap-3 items-center">
-          <form className="flex-1" action="/browse" method="GET">
+        <div className="bg-surface border-b border-[var(--border)] px-4 sm:px-6 py-3 flex flex-wrap gap-2 sm:gap-3 items-center">
+          <form className="flex-1 min-w-[160px]" action="/browse" method="GET">
             <input
               name="q"
               defaultValue={filters.q}
-              placeholder="Search by brand, reference, or description…"
+              placeholder="Search brand, reference…"
               className="w-full px-3 py-2 text-[13px] border border-[var(--border)] rounded bg-cream text-ink outline-none focus:border-gold"
             />
           </form>
-          <SortSelect defaultValue={filters.sort ?? 'newest'} />
-          <span className="font-mono text-[11px] text-muted whitespace-nowrap">
-            {total.toLocaleString()}
-          </span>
-          {hasFilters && (
-            <Link href="/browse" className="font-mono text-[10px] tracking-[0.08em] uppercase text-muted hover:text-gold transition-colors">
-              Clear
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            <SortSelect defaultValue={filters.sort ?? 'newest'} />
+            <span className="font-mono text-[11px] text-muted whitespace-nowrap">
+              {total.toLocaleString()}
+            </span>
+            {hasFilters && (
+              <Link href="/browse" className="font-mono text-[10px] tracking-[0.08em] uppercase text-muted hover:text-gold transition-colors whitespace-nowrap">
+                Clear
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Grid */}
         {watches.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 p-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5 p-3 sm:p-6">
             {watches.map(watch => (
               <WatchCard key={watch.id} watch={watch} />
             ))}

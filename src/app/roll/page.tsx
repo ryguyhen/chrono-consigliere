@@ -132,15 +132,15 @@ export default async function RollPage({ searchParams }: PageProps) {
   return (
     <div>
       {/* Header */}
-      <div className="bg-black border-b border-white/[0.07] px-6 py-7">
-        <div className="max-w-[1040px] mx-auto flex items-end justify-between">
-          <h1 className="text-[1.8rem] font-semibold tracking-[-0.03em]">Roll</h1>
+      <div className="bg-black border-b border-white/[0.07] px-4 sm:px-6 py-5 sm:py-7">
+        <div className="max-w-[1040px] mx-auto flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-0 sm:justify-between">
+          <h1 className="text-[1.5rem] sm:text-[1.8rem] font-semibold tracking-[-0.03em]">Roll</h1>
 
           {/* Tab nav */}
-          <div className="flex gap-1 bg-white/[0.05] rounded-lg p-1">
+          <div className="flex gap-1 bg-white/[0.05] rounded-lg p-1 self-start sm:self-auto">
             <Link
               href="/roll"
-              className={`px-5 py-2 rounded text-[11px] font-medium tracking-[0.06em] uppercase transition-colors
+              className={`px-5 py-2.5 sm:py-2 rounded text-[11px] font-medium tracking-[0.06em] uppercase transition-colors
                 ${activeTab === 'mine'
                   ? 'bg-gold text-black'
                   : 'text-white/50 hover:text-white/80'}`}
@@ -149,7 +149,7 @@ export default async function RollPage({ searchParams }: PageProps) {
             </Link>
             <Link
               href="/roll?tab=friends"
-              className={`px-5 py-2 rounded text-[11px] font-medium tracking-[0.06em] uppercase transition-colors
+              className={`px-5 py-2.5 sm:py-2 rounded text-[11px] font-medium tracking-[0.06em] uppercase transition-colors
                 ${activeTab === 'friends'
                   ? 'bg-gold text-black'
                   : 'text-white/50 hover:text-white/80'}`}
@@ -194,9 +194,9 @@ export default async function RollPage({ searchParams }: PageProps) {
           )}
 
           {/* Watch grid */}
-          <div className="px-6 py-6">
+          <div className="px-4 sm:px-6 py-4 sm:py-6">
             {saves.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-5">
                 {saves.map((s: any) => (
                   <WatchCard
                     key={s.id}
@@ -224,8 +224,8 @@ export default async function RollPage({ searchParams }: PageProps) {
 
       {/* ── FRIENDS TAB ───────────────────────────────────── */}
       {activeTab === 'friends' && (
-        <div className="max-w-[1040px] mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-12">
+        <div className="max-w-[1040px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8 lg:gap-12">
 
             {/* Feed */}
             <div>
@@ -271,8 +271,8 @@ export default async function RollPage({ searchParams }: PageProps) {
                           </div>
 
                           {event.listing && (
-                            <Link href={`/watch/${event.listing.id}`} className="flex gap-3.5 group">
-                              <div className="w-[52px] h-[52px] rounded flex-shrink-0 bg-[#1A1A1A] overflow-hidden relative border border-[var(--border)]">
+                            <Link href={`/watch/${event.listing.id}`} className="flex gap-3 sm:gap-3.5 group">
+                              <div className="w-[56px] h-[56px] sm:w-[52px] sm:h-[52px] rounded flex-shrink-0 bg-[#1A1A1A] overflow-hidden relative border border-[var(--border)]">
                                 {event.listing.images?.[0] ? (
                                   <Image
                                     src={event.listing.images[0].url}

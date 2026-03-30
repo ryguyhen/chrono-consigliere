@@ -70,10 +70,10 @@ export function WatchCard({ watch, onSave }: WatchCardProps) {
         {/* Save button */}
         <button
           onClick={handleSave}
-          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150
+          className={`absolute top-2.5 right-2.5 w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-150
             ${saved
               ? 'bg-gold text-black opacity-100'
-              : 'bg-black/60 text-white/70 opacity-0 group-hover:opacity-100 hover:bg-gold hover:text-black'}`}
+              : 'bg-black/60 text-white/70 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-gold hover:text-black'}`}
           title={saved ? 'Remove from roll' : 'Add to roll'}
         >
           {saved

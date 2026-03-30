@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { DM_Mono } from 'next/font/google';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth.config';
@@ -12,6 +12,12 @@ const dmMono = DM_Mono({
   weight: ['300', '400'],
   variable: '--font-dm-mono',
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: 'Chrono Consigliere — Watch what your friends are into',
@@ -31,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="bg-cream text-ink font-sans antialiased">
         <Providers>
           <Nav session={session} />
-          <main>{children}</main>
+          <main className="pb-14 md:pb-0">{children}</main>
         </Providers>
       </body>
     </html>

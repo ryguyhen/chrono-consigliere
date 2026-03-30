@@ -87,23 +87,38 @@ export default async function ProfilePage({ params }: PageProps) {
   return (
     <div>
       {/* Profile header */}
-      <div className="bg-black text-white px-6 py-8 border-b border-white/[0.07]">
+      <div className="bg-black text-white px-4 sm:px-6 py-6 sm:py-8 border-b border-white/[0.07]">
         <div className="max-w-[900px] mx-auto">
-          <div className="flex items-start gap-5">
+          <div className="flex items-start gap-4 sm:gap-5">
             {/* Avatar */}
-            <div className="w-[72px] h-[72px] rounded-full bg-gold flex items-center justify-center text-[1.6rem] font-bold text-black flex-shrink-0">
+            <div className="w-[56px] h-[56px] sm:w-[72px] sm:h-[72px] rounded-full bg-gold flex items-center justify-center text-[1.3rem] sm:text-[1.6rem] font-bold text-black flex-shrink-0">
               {displayName[0].toUpperCase()}
             </div>
 
             <div className="flex-1 min-w-0">
-              <h1 className="text-[1.7rem] font-semibold tracking-[-0.03em] mb-0.5">{displayName}</h1>
-              <div className="font-mono text-[11px] text-white/35 mb-2">@{profile.username}</div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h1 className="text-[1.3rem] sm:text-[1.7rem] font-semibold tracking-[-0.03em] mb-0.5 truncate">{displayName}</h1>
+                  <div className="font-mono text-[11px] text-white/35 mb-2">@{profile.username}</div>
+                </div>
+                {/* Actions — moved inside flex row */}
+                <div className="flex-shrink-0">
+                  {isOwnProfile ? (
+                    <button className="border border-white/15 text-white/60 text-[11px] font-medium uppercase tracking-wide px-3 py-2 sm:px-4 rounded hover:border-gold/60 hover:text-gold transition-colors whitespace-nowrap">
+                      Edit
+                    </button>
+                  ) : (
+                    <FollowButton userId={profile.userId} initialIsFollowing={isFollowing} />
+                  )}
+                </div>
+              </div>
+
               {profile.bio && (
                 <p className="text-[13px] text-white/55 max-w-[420px] leading-relaxed mb-3">{profile.bio}</p>
               )}
 
               {/* Stats */}
-              <div className="flex gap-6">
+              <div className="flex gap-4 sm:gap-6 flex-wrap">
                 {[
                   [profile.user._count.saves, 'In roll'],
                   [profile.user._count.likes, 'Liked'],
@@ -111,22 +126,11 @@ export default async function ProfilePage({ params }: PageProps) {
                   [profile.user._count.followers, 'Followers'],
                 ].map(([n, l]) => (
                   <div key={l as string}>
-                    <div className="text-[1.15rem] font-semibold">{n}</div>
+                    <div className="text-[1rem] sm:text-[1.15rem] font-semibold">{n}</div>
                     <div className="font-mono text-[9px] tracking-[0.1em] uppercase text-white/30 mt-0.5">{l}</div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex-shrink-0">
-              {isOwnProfile ? (
-                <button className="border border-white/15 text-white/60 text-[11px] font-medium uppercase tracking-wide px-4 py-2 rounded hover:border-gold/60 hover:text-gold transition-colors">
-                  Edit profile
-                </button>
-              ) : (
-                <FollowButton userId={profile.userId} initialIsFollowing={isFollowing} />
-              )}
             </div>
           </div>
 
@@ -174,13 +178,13 @@ export default async function ProfilePage({ params }: PageProps) {
       </div>
 
       {/* Saved watches */}
-      <div className="max-w-[900px] mx-auto px-6 py-6">
+      <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {saves.length > 0 ? (
           <>
             <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted mb-4">
               {saves.length} in roll
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
               {saves.map(s => (
                 <WatchCard
                   key={s.id}
@@ -206,7 +210,7 @@ export default async function ProfilePage({ params }: PageProps) {
         {collections.length > 0 && (
           <div className="mt-10">
             <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted mb-4">Collections</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
               {collections.map((col, i) => {
                 const bg = ['#1A1612', '#1A3A5C', '#2D6A4F', '#5C1A1A', '#3A1A5C'][i % 5];
                 return (

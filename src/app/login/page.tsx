@@ -28,8 +28,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-52px)] flex items-center justify-center bg-cream p-6">
-      <div className="bg-surface border border-[var(--border)] rounded-xl p-10 w-full max-w-[380px]">
+    <div className="min-h-[calc(100dvh-52px)] flex items-center justify-center bg-cream px-4 py-8">
+      <div className="bg-surface border border-[var(--border)] rounded-xl p-6 sm:p-10 w-full max-w-[380px]">
         <div className="text-center mb-7">
           <div className="text-[18px] font-semibold tracking-[-0.01em] mb-1">
             Chrono <span className="text-gold">Consigliere</span>

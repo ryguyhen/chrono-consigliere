@@ -62,17 +62,17 @@ export default async function WatchDetailPage({ params }: PageProps) {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="px-6 py-3 bg-surface border-b border-[var(--border)] flex items-center gap-2 text-[12px] text-muted">
-        <Link href="/browse" className="hover:text-ink">Browse</Link>
-        <span>/</span>
-        <Link href={`/browse?brand=${encodeURIComponent(watch.brand)}`} className="hover:text-ink">{watch.brand}</Link>
-        <span>/</span>
-        <span className="text-ink">{watch.model}</span>
+      <div className="px-4 sm:px-6 py-3 bg-surface border-b border-[var(--border)] flex items-center gap-2 text-[12px] text-muted overflow-hidden">
+        <Link href="/browse" className="hover:text-ink flex-shrink-0">Browse</Link>
+        <span className="flex-shrink-0">/</span>
+        <Link href={`/browse?brand=${encodeURIComponent(watch.brand)}`} className="hover:text-ink flex-shrink-0">{watch.brand}</Link>
+        <span className="flex-shrink-0">/</span>
+        <span className="text-ink truncate">{watch.model}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] min-h-[calc(100vh-96px)]">
         {/* Image panel */}
-        <div className="bg-[#161616] flex flex-col items-center justify-center p-8 min-h-[400px]">
+        <div className="bg-[#161616] flex flex-col items-center justify-center p-4 sm:p-8 min-h-[300px] sm:min-h-[400px]">
           <div className="relative w-full max-w-[500px] aspect-square rounded-lg overflow-hidden">
             {primaryImage ? (
               <Image
@@ -111,7 +111,7 @@ export default async function WatchDetailPage({ params }: PageProps) {
         </div>
 
         {/* Info panel */}
-        <div className="bg-surface border-l border-[var(--border)] p-7 overflow-y-auto">
+        <div className="bg-surface lg:border-l border-t lg:border-t-0 border-[var(--border)] p-5 sm:p-7 overflow-y-auto">
           <div className="text-[11px] font-medium tracking-[0.14em] uppercase text-gold mb-1.5">{watch.brand}</div>
           <h1 className="text-[1.8rem] font-semibold leading-tight tracking-[-0.03em] mb-2">{watch.model || watch.sourceTitle}</h1>
           {watch.reference && (
@@ -145,12 +145,12 @@ export default async function WatchDetailPage({ params }: PageProps) {
           )}
 
           {/* CTA buttons */}
-          <div className="flex gap-2 mb-6 flex-wrap">
+          <div className="flex gap-2 mb-6 flex-col xs:flex-row sm:flex-row">
             <a
               href={watch.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 bg-gold text-black text-[11px] font-bold tracking-[0.1em] uppercase px-5 py-3 rounded text-center hover:bg-gold-dark transition-colors min-w-[160px]"
+              className="flex-1 bg-gold text-black text-[11px] font-bold tracking-[0.1em] uppercase px-5 py-3.5 rounded text-center hover:bg-gold-dark transition-colors"
             >
               View at {watch.source.name} ↗
             </a>

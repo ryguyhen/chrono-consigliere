@@ -81,19 +81,18 @@ export default function PeoplePage() {
   const displayList = query.length >= 2 ? results : suggested;
 
   return (
-    <div className="max-w-[640px] mx-auto px-6 py-8">
-      <h1 className="text-[1.5rem] font-normal tracking-[-0.02em] mb-1">People</h1>
-      <p className="text-[13px] text-muted mb-6">Find people to follow. See what they're saving.</p>
+    <div className="max-w-[640px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <h1 className="text-[1.4rem] sm:text-[1.5rem] font-normal tracking-[-0.02em] mb-1">People</h1>
+      <p className="text-[13px] text-muted mb-5 sm:mb-6">Find people to follow. See what they're saving.</p>
 
       {/* Search */}
-      <div className="relative mb-8">
+      <div className="relative mb-6 sm:mb-8">
         <input
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search by name or username…"
-          className="w-full px-4 py-3 border border-[var(--border)] rounded-lg bg-parchment text-[13px] text-ink outline-none focus:border-gold transition-colors pr-10 placeholder:text-muted/50"
-          autoFocus
+          className="w-full px-4 py-3.5 sm:py-3 border border-[var(--border)] rounded-lg bg-parchment text-[14px] sm:text-[13px] text-ink outline-none focus:border-gold transition-colors pr-10 placeholder:text-muted/50"
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
@@ -143,7 +142,7 @@ export default function PeoplePage() {
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 <button
                   onClick={() => toggleFollow(user.id, isFollowing)}
-                  className={`font-mono text-[9px] tracking-[0.08em] uppercase px-3 py-1.5 rounded border transition-colors
+                  className={`font-mono text-[9px] tracking-[0.08em] uppercase px-3 py-2 sm:py-1.5 rounded border transition-colors whitespace-nowrap
                     ${isFollowing
                       ? 'bg-gold border-gold text-black font-bold'
                       : 'border-[var(--border)] text-muted hover:border-gold/60 hover:text-gold'
