@@ -26,27 +26,39 @@ export default async function LandingPage() {
       {/* HERO */}
       <section className="bg-black text-white px-8 py-28 border-b border-white/[0.06]">
         <div className="max-w-[560px] mx-auto text-center">
-          <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-gold mb-7">
-            Start your roll
+          <p className="font-mono text-[10px] tracking-[0.2em] uppercase text-white/35 mb-8">
+            Presented by Chrono Consigliere
           </p>
-          <h1 className="text-[clamp(2.2rem,5.5vw,3.8rem)] font-semibold leading-[1.08] mb-7 tracking-[-0.03em]">
-            Build your watch box, follow your friends, and keep up with what's good.
+          <h1 className="text-[clamp(3rem,8vw,5.5rem)] font-semibold leading-[1.0] mb-5 tracking-[-0.04em]">
+            Start your roll.
           </h1>
-          <div className="flex gap-3 justify-center mt-10">
-            {!session && (
+          <p className="text-[15px] text-white/50 max-w-[420px] mx-auto mb-10 leading-relaxed font-normal">
+            Build your watch box, follow your friends, and keep up with what's good.
+          </p>
+          <div className="flex gap-3 justify-center">
+            {!session ? (
+              <>
+                <Link
+                  href="/register"
+                  className="bg-gold text-black text-[11px] font-bold tracking-[0.1em] uppercase px-6 py-3 rounded hover:bg-gold-dark transition-colors"
+                >
+                  Start here
+                </Link>
+                <Link
+                  href="/browse"
+                  className="border border-white/15 text-white/60 text-[11px] font-medium tracking-[0.1em] uppercase px-6 py-3 rounded hover:border-gold/60 hover:text-gold transition-colors"
+                >
+                  Browse watches
+                </Link>
+              </>
+            ) : (
               <Link
-                href="/register"
+                href="/browse"
                 className="bg-gold text-black text-[11px] font-bold tracking-[0.1em] uppercase px-6 py-3 rounded hover:bg-gold-dark transition-colors"
               >
-                Start your roll
+                Browse watches
               </Link>
             )}
-            <Link
-              href="/browse"
-              className="border border-white/15 text-white/60 text-[11px] font-medium tracking-[0.1em] uppercase px-6 py-3 rounded hover:border-gold/60 hover:text-gold transition-colors"
-            >
-              Browse watches
-            </Link>
           </div>
 
           {/* Stats */}
