@@ -101,8 +101,34 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
       sampleUrls: [] as string[],
     };
 
+    // ── Strategy 0: Squarespace ?format=json HTTP API (no Playwright) ──────
+    // Most Squarespace stores expose ?format=json which returns full product
+    // data without needing a browser. Try this first; fall back to Playwright
+    // only if it returns non-JSON or an empty items array.
+    try {
+      const jsonListings = await this.scrapeViaFormatJson();
+      if (jsonListings !== null) {
+        diagnostics.strategy = 'format-json-api';
+        diagnostics.jsonContextUsed = true;
+        diagnostics.cardsFound = jsonListings.length;
+        diagnostics.pagesProcessed = 1;
+        for (const l of jsonListings) {
+          if (l.isAvailable) diagnostics.inStock++;
+          else diagnostics.outOfStock++;
+        }
+        if (jsonListings.length > 0) {
+          diagnostics.sampleTitles = jsonListings.slice(0, 3).map(l => l.sourceTitle);
+          diagnostics.sampleUrls = jsonListings.slice(0, 3).map(l => l.sourceUrl);
+        }
+        this.log('info', `Done. ${jsonListings.length} listings | ${diagnostics.inStock} in-stock | ${diagnostics.outOfStock} out-of-stock | via format=json API`);
+        return { listings: jsonListings, totalFound: jsonListings.length, errors, diagnostics };
+      }
+    } catch (err: any) {
+      this.log('info', `format=json API unavailable (${err.message}) — falling back to Playwright`);
+    }
+
     if (process.env.SCRAPER_NO_PLAYWRIGHT === 'true') {
-      const msg = `${this.config.sourceName}: Playwright disabled (SCRAPER_NO_PLAYWRIGHT=true) — this source requires Playwright`;
+      const msg = `${this.config.sourceName}: format=json API returned nothing and Playwright is disabled (SCRAPER_NO_PLAYWRIGHT=true)`;
       this.log('warn', msg);
       return { listings: [], totalFound: 0, errors: [msg], diagnostics };
     }
@@ -383,6 +409,42 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
     return { listings, totalFound: listings.length, errors, diagnostics };
   }
 
+  /** Fetch all items via Squarespace ?format=json API (no Playwright required). */
+  private async scrapeViaFormatJson(): Promise<ScrapedListing[] | null> {
+    const listings: ScrapedListing[] = [];
+    const base = this.sqConfig.listingUrl;
+    let fetchUrl = `${base}${base.includes('?') ? '&' : '?'}format=json`;
+
+    for (let page = 1; page <= (this.config.maxPages ?? 20); page++) {
+      const res = await fetch(fetchUrl, {
+        headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      });
+      if (!res.ok) return null;
+
+      const data = await res.json() as any;
+      if (!Array.isArray(data?.items)) return null;
+      if (page === 1 && data.items.length === 0) return null; // empty = API not useful
+
+      for (const item of data.items) {
+        // Skip non-product items (e.g., type 1 = blog, 11 = store-item)
+        if (item.recordType != null && item.recordType !== 11) continue;
+        const listing = this.extractFromSquarespaceItem(item);
+        if (listing) listings.push(listing);
+      }
+
+      if (data.pagination?.nextPage && data.pagination?.nextPageUrl) {
+        const nextRel = data.pagination.nextPageUrl as string; // e.g. "/?offset=200"
+        const sep = nextRel.includes('?') ? '&' : '?';
+        fetchUrl = `${this.sqConfig.baseUrl}${nextRel}${sep}format=json`;
+        await this.delay(500);
+      } else {
+        break;
+      }
+    }
+
+    return listings;
+  }
+
   private extractFromSquarespaceItem(item: any): ScrapedListing | null {
     if (!item?.title) return null;
 
@@ -392,22 +454,33 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
     if (!fullUrl) return null;
 
     const variants = item.variants ?? item.structuredContent?.variants ?? [];
+    // Squarespace uses qtyInStock (format-json API) or stock (embedded context).
+    // unlimited: true means no stock cap. purchasable is present on context items.
     const isAvailable = item.purchasable === true ||
-      variants.some((v: any) => v.stock == null || v.stock > 0);
+      (item.purchasable == null && variants.length === 0) || // no variant data = assume available
+      variants.some((v: any) => {
+        if (v.unlimited === true) return true;
+        const qty = v.qtyInStock ?? v.stock ?? null;
+        return qty == null || qty > 0;
+      });
 
-    const priceRaw = item.structuredContent?.priceCents
-      ?? item.variants?.[0]?.priceMoney?.value
-      ?? item.variants?.[0]?.price
-      ?? null;
-    // priceCents is already in minor units; raw variant price may be decimal dollars/pounds
-    const price = priceRaw != null
-      ? (String(priceRaw).includes('.') ? Math.round(Number(priceRaw) * 100) : Number(priceRaw))
-      : null;
+    // priceMoney.value is a decimal string (e.g. "27500.00") — convert to cents.
+    // variants[].price from format-json API is already in cents (e.g. 2750000).
+    // structuredContent.priceCents is already in cents.
+    const priceMoneyVal = item.variants?.[0]?.priceMoney?.value;
+    const priceCentsRaw = item.structuredContent?.priceCents ?? item.variants?.[0]?.price ?? null;
+    const price = priceMoneyVal != null
+      ? Math.round(Number(priceMoneyVal) * 100)   // decimal → cents
+      : priceCentsRaw != null
+        ? Number(priceCentsRaw)                    // already cents
+        : null;
 
-    const currencySymbol = { USD: '$', GBP: '£', EUR: '€', JPY: '¥' }[this.sqConfig.currency ?? 'USD'] ?? '$';
-    const sourcePrice = item.variants?.[0]?.price
-      ? `${currencySymbol}${(Number(item.variants[0].price)).toFixed(2)}`
-      : null;
+    const currencySymbol = ({ USD: '$', GBP: '£', EUR: '€', JPY: '¥' } as Record<string, string>)[this.sqConfig.currency ?? 'USD'] ?? '$';
+    const sourcePrice = priceMoneyVal != null
+      ? `${currencySymbol}${Number(priceMoneyVal).toFixed(2)}`
+      : priceCentsRaw != null && Number(priceCentsRaw) > 0
+        ? `${currencySymbol}${(Number(priceCentsRaw) / 100).toFixed(2)}`
+        : null;
 
     const imgUrl: string | null =
       item.assetUrl ??
