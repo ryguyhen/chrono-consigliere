@@ -115,7 +115,14 @@ export class DadAndSonWatchesAdapter extends BaseAdapter {
 
     const browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+      args: [
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        // Suppress the most obvious headless-mode fingerprints
+        '--disable-blink-features=AutomationControlled',
+        '--disable-features=IsolateOrigins,site-per-process',
+      ],
     });
 
     try {
@@ -123,21 +130,65 @@ export class DadAndSonWatchesAdapter extends BaseAdapter {
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         locale: 'en-US',
         acceptDownloads: false,
+        extraHTTPHeaders: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+          'Sec-Ch-Ua-Mobile': '?0',
+          'Sec-Ch-Ua-Platform': '"macOS"',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Sec-Fetch-User': '?1',
+          'Upgrade-Insecure-Requests': '1',
+        },
       });
+
+      // Remove navigator.webdriver — the #1 headless fingerprint
+      await context.addInitScript(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        // Also patch common automation detection probes
+        (window as any).chrome = { runtime: {} };
+      });
+
       const page = await context.newPage();
+
+      // Warm the session: visit homepage first to pick up cookies/challenge tokens
+      // before hitting the collection page
+      this.log('info', 'Warming session via homepage...');
+      try {
+        const homeResp = await page.goto(this.config.baseUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: 20000,
+        });
+        if (homeResp?.status() === 200) {
+          this.log('info', 'Homepage OK — cookies set, proceeding to /watches');
+          await this.delay(1500 + Math.random() * 1000); // human-like pause
+        } else {
+          this.log('warn', `Homepage returned ${homeResp?.status()} — proceeding anyway`);
+        }
+      } catch (e: any) {
+        this.log('warn', `Homepage warm failed: ${e.message} — proceeding anyway`);
+      }
 
       let pageNum = 1;
       let hasMore = true;
 
       while (hasMore && pageNum <= this.config.maxPages!) {
-        // Squarespace pagination: ?page=N (1-indexed)
         const url = pageNum === 1 ? this.listingUrl : `${this.listingUrl}?page=${pageNum}`;
         this.log('info', `Fetching page ${pageNum}: ${url}`);
 
+        let httpStatus = 0;
         try {
-          await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+          const resp = await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+          httpStatus = resp?.status() ?? 0;
+          this.log('info', `Page ${pageNum} HTTP ${httpStatus}`);
+          if (httpStatus === 503 || httpStatus === 403) {
+            errors.push(`Page ${pageNum}: HTTP ${httpStatus} — bot protection active on ${url}`);
+            hasMore = false;
+            break;
+          }
         } catch {
-          // networkidle can timeout on heavy pages — still try to extract
           this.log('warn', `Page ${pageNum} networkidle timeout — attempting extraction anyway`);
         }
 
