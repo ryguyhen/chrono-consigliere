@@ -18,7 +18,7 @@
 import { ShopifyBaseAdapter } from './_shopify-base.adapter';
 import { WooCommerceBaseAdapter } from './_woocommerce-base.adapter';
 import { BaseAdapter } from '../base-adapter';
-import { chromium } from 'playwright';
+import { chromium, firefox } from 'playwright';
 import type { ScrapeResult, ScrapedListing } from '../base-adapter';
 
 // ─────────────────────────────────────────────────────────────
@@ -66,10 +66,36 @@ export class CraftAndTailoredAdapter extends ShopifyBaseAdapter {
         'book', 'pouch', 'tool', 'merch', 'gift card',
       ],
 
-      // Layer 4 — positive indicator: must look like a watch
-      // All C&T watches carry product_type "timepiece" and/or tag "timepiece"
-      watchIndicatorTags: ['timepiece', 'watch'],
-      watchIndicatorTypes: ['timepiece', 'watch'],
+      // Layer 4 — positive indicator: product must have at least one watch signal.
+      // C&T's tag taxonomy: brand names + style tags + condition tags.
+      // Many real watches have empty product_type and only brand/style tags — include all of them.
+      // The indicator list is intentionally broad; non-watches are already caught by layers 1–3.
+      watchIndicatorTags: [
+        // Explicit watch tags
+        'timepiece', 'watch',
+        // Watch styles — appear on empty-type watches
+        'dress', 'sport', 'diver', 'dive', 'vintage', 'chronograph', 'pilot',
+        'field', 'military', 'casual', 'alarm', 'alarm watch',
+        // Watch feature/condition tags C&T uses
+        'date', 'tropical', 'faded', 'rare', 'unusual', 'gilt',
+        'full set', 'Full Set', 'papers', 'Papers',
+        // Brand names — any brand tag = it's a watch
+        'rolex', 'omega', 'patek', 'patek-philippe', 'seiko', 'grand seiko',
+        'tudor', 'heuer', 'tag heuer', 'iwc', 'zenith', 'longines',
+        'universal', 'universal-geneve', 'breitling', 'audemars', 'audemars-piguet',
+        'vacheron', 'cartier', 'hamilton', 'movado', 'panerai', 'blancpain',
+        'jaeger', 'jaeger-lecoultre', 'elgin', 'bulova', 'wittnauer',
+        'enicar', 'doxa', 'glycine', 'tissot', 'citizen', 'oris',
+        'sinn', 'nomos', 'hublot', 'zodiac', 'rado', 'ebel',
+        'girard', 'girard-perregaux', 'corum', 'piaget', 'a. lange',
+        'ulysse', 'chopard', 'richard mille', 'fp journe', 'moser',
+      ],
+      watchIndicatorTypes: [
+        'timepiece', 'watch',
+        // C&T-specific product types seen in practice
+        'diver', 'dress watch', 'sport watch', 'field watch', 'pilot watch',
+        'dive watch', 'tool watch', 'vintage watch', 'chronograph',
+      ],
 
       rateLimit: 1500,
     });
@@ -148,62 +174,67 @@ export class DadAndSonWatchesAdapter extends BaseAdapter {
       return { listings: [], totalFound: 0, errors: [msg], diagnostics };
     }
 
-    const browser = await chromium.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        // Suppress the most obvious headless-mode fingerprints
-        '--disable-blink-features=AutomationControlled',
-        '--disable-features=IsolateOrigins,site-per-process',
-      ],
-    });
+    // Firefox scores significantly better with Cloudflare than headless Chromium —
+    // Cloudflare's bot scoring penalises Chromium automation flags more aggressively.
+    // Falls back to Chromium if Firefox browser binary isn't available.
+    let browser: Awaited<ReturnType<typeof firefox.launch>> | Awaited<ReturnType<typeof chromium.launch>>;
+    let usingFirefox = false;
+    try {
+      browser = await firefox.launch({ headless: true });
+      usingFirefox = true;
+      this.log('info', 'Launched Firefox (better Cloudflare compatibility)');
+    } catch {
+      browser = await chromium.launch({
+        headless: true,
+        args: [
+          '--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu',
+          '--disable-blink-features=AutomationControlled',
+        ],
+      });
+      this.log('info', 'Firefox unavailable — falling back to Chromium');
+    }
 
     try {
       const context = await browser.newContext({
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        userAgent: usingFirefox
+          ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:122.0) Gecko/20100101 Firefox/122.0'
+          : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         locale: 'en-US',
         acceptDownloads: false,
         extraHTTPHeaders: {
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.9',
-          'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-          'Sec-Ch-Ua-Mobile': '?0',
-          'Sec-Ch-Ua-Platform': '"macOS"',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'none',
-          'Sec-Fetch-User': '?1',
           'Upgrade-Insecure-Requests': '1',
         },
       });
 
-      // Remove navigator.webdriver — the #1 headless fingerprint
-      await context.addInitScript(() => {
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-        // Also patch common automation detection probes
-        (window as any).chrome = { runtime: {} };
-      });
+      if (!usingFirefox) {
+        await context.addInitScript(() => {
+          Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+          (window as any).chrome = { runtime: {} };
+        });
+      }
 
       const page = await context.newPage();
 
-      // Warm the session: visit homepage first to pick up cookies/challenge tokens
-      // before hitting the collection page
-      this.log('info', 'Warming session via homepage...');
+      // Warm the session: visit homepage first so Cloudflare issues session cookies
+      // before we hit the protected collection page.
+      this.log('info', `Warming session via homepage (${usingFirefox ? 'Firefox' : 'Chromium'})...`);
       try {
         const homeResp = await page.goto(this.config.baseUrl, {
           waitUntil: 'domcontentloaded',
-          timeout: 20000,
+          timeout: 25000,
         });
-        if (homeResp?.status() === 200) {
-          this.log('info', 'Homepage OK — cookies set, proceeding to /watches');
-          await this.delay(1500 + Math.random() * 1000); // human-like pause
+        const homeStatus = homeResp?.status() ?? 0;
+        this.log('info', `Homepage HTTP ${homeStatus}`);
+        if (homeStatus === 200) {
+          // Let Cloudflare JS challenge complete and cookies settle
+          await this.delay(3000 + Math.random() * 2000);
         } else {
-          this.log('warn', `Homepage returned ${homeResp?.status()} — proceeding anyway`);
+          this.log('warn', `Homepage returned ${homeStatus} — Cloudflare may be blocking this IP`);
         }
       } catch (e: any) {
-        this.log('warn', `Homepage warm failed: ${e.message} — proceeding anyway`);
+        this.log('warn', `Homepage warm failed: ${e.message}`);
       }
 
       let pageNum = 1;
