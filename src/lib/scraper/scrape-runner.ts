@@ -36,16 +36,49 @@ export async function runScrapeJob(sourceId: string): Promise<ScrapeJobSummary> 
   try {
     const result = await adapter.scrape();
 
-    // Process each listing
+    // --- Batch DB write ---
+    // 1. One query to load all existing URLs for this source
+    const existing = await prisma.watchListing.findMany({
+      where: { sourceId },
+      select: { id: true, sourceUrl: true },
+    });
+    const existingMap = new Map(existing.map(e => [e.sourceUrl, e.id]));
+
+    const scrapedUrls = new Set(result.listings.map(l => l.sourceUrl));
     let newCount = 0;
     let updatedCount = 0;
-    const scrapedUrls = new Set<string>();
 
-    for (const listing of result.listings) {
-      scrapedUrls.add(listing.sourceUrl);
-      const upserted = await upsertListing(listing, sourceId);
-      if (upserted === 'created') newCount++;
-      else if (upserted === 'updated') updatedCount++;
+    // 2. Process in chunks of 50 to cap memory and let GC run between batches
+    const CHUNK = 50;
+    for (let i = 0; i < result.listings.length; i += CHUNK) {
+      const chunk = result.listings.slice(i, i + CHUNK);
+
+      await Promise.all(chunk.map(async (listing) => {
+        const data = buildListingData(listing, sourceId);
+        const existingId = existingMap.get(listing.sourceUrl);
+
+        if (existingId) {
+          await prisma.watchListing.update({ where: { id: existingId }, data });
+          updatedCount++;
+        } else {
+          const created = await prisma.watchListing.create({
+            data: { ...data, sourceUrl: listing.sourceUrl },
+            select: { id: true },
+          });
+          // Batch image inserts inline (still per-listing, but no extra select query)
+          if (listing.images?.length) {
+            await prisma.watchImage.createMany({
+              data: listing.images.map(img => ({
+                listingId: created.id,
+                url: img.url,
+                isPrimary: img.isPrimary,
+              })),
+              skipDuplicates: true,
+            });
+          }
+          newCount++;
+        }
+      }));
     }
 
     // Mark any previously-active listings that didn't appear in this scrape as unavailable
@@ -101,15 +134,8 @@ export async function runScrapeJob(sourceId: string): Promise<ScrapeJobSummary> 
   }
 }
 
-async function upsertListing(
-  listing: ScrapedListing,
-  sourceId: string
-): Promise<'created' | 'updated' | 'skipped'> {
-  const existing = await prisma.watchListing.findUnique({
-    where: { sourceUrl: listing.sourceUrl },
-  });
-
-  const data = {
+function buildListingData(listing: ScrapedListing, sourceId: string) {
+  return {
     sourceId,
     isAvailable: listing.isAvailable,
     lastCheckedAt: new Date(),
@@ -122,53 +148,12 @@ async function upsertListing(
     dialColor: listing.dialColor,
     movementType: listing.movementType,
     condition: listing.condition,
-    style: undefined as any, // enriched separately
     price: listing.price,
     currency: listing.currency,
     description: listing.description,
     sourceTitle: listing.sourceTitle,
     sourcePrice: listing.sourcePrice,
   };
-
-  if (existing) {
-    await prisma.watchListing.update({ where: { id: existing.id }, data });
-    return 'updated';
-  }
-
-  const created = await prisma.watchListing.create({
-    data: { ...data, sourceUrl: listing.sourceUrl },
-  });
-
-  // Create images
-  if (listing.images?.length) {
-    await prisma.watchImage.createMany({
-      data: listing.images.map(img => ({
-        listingId: created.id,
-        url: img.url,
-        isPrimary: img.isPrimary,
-      })),
-    });
-  }
-
-  // Check for duplicates by reference number
-  if (listing.reference) {
-    const possibleDupe = await prisma.watchListing.findFirst({
-      where: {
-        reference: listing.reference,
-        brand: data.brand,
-        id: { not: created.id },
-        isAvailable: true,
-      },
-    });
-    if (possibleDupe) {
-      await prisma.watchListing.update({
-        where: { id: created.id },
-        data: { duplicateOf: possibleDupe.id },
-      });
-    }
-  }
-
-  return 'created';
 }
 
 async function failJob(jobId: string, message: string): Promise<void> {
