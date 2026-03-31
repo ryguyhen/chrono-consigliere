@@ -22,7 +22,7 @@ export const ALL_DEALERS = [
     baseUrl: 'https://www.dadandson-watches.com',
     adapterName: 'DadAndSonWatchesAdapter',
     scrapeConfig: { platform: 'shopify', watchCollection: 'watches' },
-    isActive: true,
+    isActive: false, // Cloudflare IUAM blocks Railway IPs — re-enable with residential proxy
   },
   {
     name: 'Watchnet Japan',
