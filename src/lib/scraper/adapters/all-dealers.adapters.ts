@@ -380,15 +380,16 @@ export class VintageWatchServicesAdapter extends BaseAdapter {
 
       this.log('info', `Found ${productUrls.length} product URLs`);
 
-      // Step 2: visit each product and extract JSON-LD
+      // Step 2: visit each product in a fresh page to prevent memory buildup
       for (const url of productUrls) {
+        const productPage = await context.newPage();
         try {
           await this.delay();
           await this.withRetry(() =>
-            page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 })
+            productPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 })
           );
 
-          const ld = await page.evaluate((): Record<string, any> | null => {
+          const ld = await productPage.evaluate((): Record<string, any> | null => {
             for (const el of document.querySelectorAll('script[type="application/ld+json"]')) {
               try {
                 const data = JSON.parse(el.textContent ?? '');
@@ -434,6 +435,8 @@ export class VintageWatchServicesAdapter extends BaseAdapter {
         } catch (err: any) {
           this.log('warn', `Failed ${url}: ${err.message}`);
           errors.push(url);
+        } finally {
+          await productPage.close();
         }
       }
     } finally {
