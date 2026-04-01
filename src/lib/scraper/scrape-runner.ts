@@ -73,6 +73,19 @@ export async function runScrapeJob(sourceId: string): Promise<ScrapeJobSummary> 
 
         if (existingId) {
           await prisma.watchListing.update({ where: { id: existingId }, data });
+          // Sync images: update whenever the scraper returns images, so that
+          // listings that previously had no images pick them up on re-scrape.
+          if (listing.images?.length) {
+            await prisma.watchImage.deleteMany({ where: { listingId: existingId } });
+            await prisma.watchImage.createMany({
+              data: listing.images.map(img => ({
+                listingId: existingId,
+                url: img.url,
+                isPrimary: img.isPrimary,
+              })),
+              skipDuplicates: true,
+            });
+          }
           updatedCount++;
         } else {
           const created = await prisma.watchListing.create({

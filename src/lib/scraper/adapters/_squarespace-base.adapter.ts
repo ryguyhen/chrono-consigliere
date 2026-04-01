@@ -424,6 +424,34 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
         if (hasMore) await this.delay();
       }
 
+      // ── Post-scrape image enrichment (Playwright path) ────────────────────
+      // For listings without images after page scraping, fetch each product's
+      // individual ?format=json to extract images. This is the primary image
+      // source for dadandson-watches.com and other sites where the collection
+      // page does not embed image galleries in the JSON context or DOM cards.
+      const noImgListings = listings.filter(l => l.images.length === 0);
+      const imgFoundCount = listings.length - noImgListings.length;
+      this.log('info', `[image-debug] ${imgFoundCount}/${listings.length} have images from page scrape; ${noImgListings.length} need product-page fetch`);
+
+      if (noImgListings.length > 0) {
+        let enriched = 0;
+        for (const listing of noImgListings) {
+          await this.delay(300);
+          const imgs = await this.fetchImagesFromProductPage(listing.sourceUrl);
+          if (imgs.length > 0) {
+            listing.images = imgs;
+            enriched++;
+          }
+        }
+        const sampleUrls = listings
+          .filter(l => l.images.length > 0)
+          .slice(0, 3)
+          .map(l => l.images[0].url)
+          .join(' | ');
+        this.log('info', `[image-debug] product-page enrichment: ${enriched}/${noImgListings.length} got images`);
+        this.log('info', `[image-debug] sample image URLs: ${sampleUrls || '(none)'}`);
+      }
+
     } finally {
       await browser.close();
     }
@@ -471,41 +499,62 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
     const noImg = listings.filter(l => l.images.length === 0);
     this.log('info', `Image summary: ${listings.length - noImg.length}/${listings.length} with images, ${noImg.length} missing — fetching product pages for those`);
     for (const listing of noImg) {
-      try {
-        await this.delay(500);
-        const res = await fetch(`${listing.sourceUrl}?format=json`, {
-          headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
-        });
-        if (!res.ok) continue;
-        const data = await res.json() as any;
-        // Product page JSON: top-level item with structuredContent.images, OR
-        // items array containing the product entry
-        const productItem = Array.isArray(data?.items)
-          ? data.items.find((i: any) => i.recordType === 11 || i.recordType === 2)
-          : data?.item ?? null;
-
-        if (productItem) {
-          const imgs: Array<{ url: string; isPrimary: boolean }> = (
-            productItem.structuredContent?.images ?? []
-          )
-            .filter((img: any) => isValidSquarespaceImageUrl(img?.assetUrl))
-            .map((img: any, idx: number) => ({ url: img.assetUrl as string, isPrimary: idx === 0 }));
-
-          if (imgs.length === 0 && isValidSquarespaceImageUrl(productItem.assetUrl)) {
-            imgs.push({ url: productItem.assetUrl as string, isPrimary: true });
-          }
-
-          if (imgs.length > 0) {
-            listing.images = imgs;
-            this.log('info', `  ${listing.sourceTitle}: got ${imgs.length} image(s) from product page`);
-          }
-        }
-      } catch {
-        // ignore individual failures — best-effort
+      await this.delay(500);
+      const imgs = await this.fetchImagesFromProductPage(listing.sourceUrl);
+      if (imgs.length > 0) {
+        listing.images = imgs;
+        this.log('info', `  ${listing.sourceTitle}: got ${imgs.length} image(s) from product page`);
       }
     }
 
     return listings;
+  }
+
+  /**
+   * Fetch images for a single product by loading its ?format=json endpoint.
+   * Handles both structuredContent.images (standard Squarespace) and
+   * item.items[] (dadandson-watches.com and similar sites).
+   */
+  private async fetchImagesFromProductPage(
+    sourceUrl: string,
+  ): Promise<Array<{ url: string; isPrimary: boolean }>> {
+    try {
+      const res = await fetch(`${sourceUrl}?format=json`, {
+        headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      });
+      if (!res.ok) return [];
+      const data = await res.json() as any;
+
+      // Product page JSON can have an 'item' top-level key (Dadandson, most sites)
+      // or an 'items' array (older Squarespace format)
+      const productItem = Array.isArray(data?.items)
+        ? data.items.find((i: any) => i.recordType === 11 || i.recordType === 2)
+        : data?.item ?? null;
+      if (!productItem) return [];
+
+      // 1. structuredContent.images — standard Squarespace product gallery
+      let imgs: Array<{ url: string; isPrimary: boolean }> = (
+        productItem.structuredContent?.images ?? []
+      )
+        .filter((img: any) => isValidSquarespaceImageUrl(img?.assetUrl))
+        .map((img: any, idx: number) => ({ url: img.assetUrl as string, isPrimary: idx === 0 }));
+
+      // 2. item.items[] — alternate gallery structure (dadandson-watches.com confirmed)
+      if (imgs.length === 0) {
+        imgs = (productItem.items ?? [])
+          .filter((img: any) => isValidSquarespaceImageUrl(img?.assetUrl))
+          .map((img: any, idx: number) => ({ url: img.assetUrl as string, isPrimary: idx === 0 }));
+      }
+
+      // 3. Top-level assetUrl — last resort
+      if (imgs.length === 0 && isValidSquarespaceImageUrl(productItem.assetUrl)) {
+        imgs = [{ url: productItem.assetUrl as string, isPrimary: true }];
+      }
+
+      return imgs;
+    } catch {
+      return [];
+    }
   }
 
   private extractFromSquarespaceItem(item: any): ScrapedListing | null {
@@ -552,23 +601,34 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
         ? `${currencySymbol}${(Number(priceCentsRaw) / 100).toFixed(2)}`
         : null;
 
-    // Build image list — prefer structuredContent.images (full gallery with CDN URLs).
-    // item.assetUrl is often a Squarespace asset *directory* path (no filename),
-    // not a renderable image URL, so validate before using it.
+    // Build image list.
+    // Priority order:
+    //   1. structuredContent.images[] — standard Squarespace product gallery
+    //   2. item.items[].assetUrl      — alternate gallery (dadandson-watches.com and similar)
+    //   3. item.assetUrl              — top-level asset (must be a valid CDN URL, not a directory path)
+    //   4. item.mainImage.assetUrl    — last resort
     const structuredImages: Array<{ url: string; isPrimary: boolean }> = (
       item.structuredContent?.images ?? []
     )
       .filter((img: any) => isValidSquarespaceImageUrl(img?.assetUrl))
       .map((img: any, i: number) => ({ url: img.assetUrl as string, isPrimary: i === 0 }));
 
+    // item.items[] — used by dadandson-watches.com and other sites where the product
+    // page JSON embeds the image gallery under item.items rather than structuredContent.images
+    const itemGalleryImages: Array<{ url: string; isPrimary: boolean }> = (item.items ?? [])
+      .filter((img: any) => isValidSquarespaceImageUrl(img?.assetUrl))
+      .map((img: any, i: number) => ({ url: img.assetUrl as string, isPrimary: i === 0 }));
+
     const images: Array<{ url: string; isPrimary: boolean }> =
       structuredImages.length > 0
         ? structuredImages
-        : isValidSquarespaceImageUrl(item.assetUrl)
-          ? [{ url: item.assetUrl as string, isPrimary: true }]
-          : isValidSquarespaceImageUrl(item.mainImage?.assetUrl)
-            ? [{ url: item.mainImage.assetUrl as string, isPrimary: true }]
-            : [];
+        : itemGalleryImages.length > 0
+          ? itemGalleryImages
+          : isValidSquarespaceImageUrl(item.assetUrl)
+            ? [{ url: item.assetUrl as string, isPrimary: true }]
+            : isValidSquarespaceImageUrl(item.mainImage?.assetUrl)
+              ? [{ url: item.mainImage.assetUrl as string, isPrimary: true }]
+              : [];
 
     const description = item.body
       ? item.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000)
