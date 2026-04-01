@@ -39,6 +39,7 @@ export type WatchWithRelations = {
   // Populated when fetched with user context
   isLiked?: boolean;
   isSaved?: boolean;
+  isOwned?: boolean;
   friendLikes?: { userId: string; user: { profile: { username: string; displayName: string | null } | null } }[];
 };
 
@@ -69,7 +70,7 @@ export type UserProfile = {
 
 export type FeedEvent = {
   id: string;
-  type: 'LIKED' | 'SAVED' | 'PURCHASED' | 'INFLUENCED_PURCHASE' | 'FOLLOWED' | 'ADDED_TO_COLLECTION';
+  type: 'LIKED' | 'SAVED' | 'OWNED' | 'PURCHASED' | 'INFLUENCED_PURCHASE' | 'FOLLOWED' | 'ADDED_TO_COLLECTION';
   createdAt: Date;
   metadata: Record<string, unknown> | null;
   actor: {

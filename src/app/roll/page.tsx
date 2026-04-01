@@ -14,21 +14,27 @@ export default async function RollPage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
-  // Legacy: ?tab=friends now lives at /friends
+  // Legacy redirect
   if (searchParams.tab === 'friends') redirect('/friends');
 
   const userId = (session.user as any).id;
-  const activeCollectionId = searchParams.collection;
+  const activeTab = searchParams.tab === 'owned' ? 'owned' : 'favorites';
+  const activeCollectionId = activeTab === 'favorites' ? searchParams.collection : undefined;
 
-  const [collections, totalSaves, saves] = await Promise.all([
+  const [collections, favoritesCount, ownedCount, saves] = await Promise.all([
     prisma.collection.findMany({
       where: { userId },
       include: { _count: { select: { items: true } } },
       orderBy: { sortOrder: 'asc' },
     }),
-    prisma.wishlistItem.count({ where: { userId } }),
+    prisma.wishlistItem.count({ where: { userId, list: 'FAVORITES' } }),
+    prisma.wishlistItem.count({ where: { userId, list: 'OWNED' } }),
     prisma.wishlistItem.findMany({
-      where: { userId, ...(activeCollectionId ? { collectionId: activeCollectionId } : {}) },
+      where: {
+        userId,
+        list: activeTab === 'owned' ? 'OWNED' : 'FAVORITES',
+        ...(activeCollectionId ? { collectionId: activeCollectionId } : {}),
+      },
       include: {
         listing: {
           include: {
@@ -52,8 +58,30 @@ export default async function RollPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {/* Collection filter */}
-      {(collections.length > 0 || totalSaves > 0) && (
+      {/* Favorites / Owned tabs */}
+      <div className="border-b border-[var(--border)] px-4 sm:px-6 flex gap-0">
+        <Link
+          href="/roll"
+          className={`px-4 py-3.5 text-[11px] font-mono tracking-[0.1em] uppercase border-b-2 transition-colors
+            ${activeTab === 'favorites'
+              ? 'border-gold text-gold'
+              : 'border-transparent text-muted hover:text-ink'}`}
+        >
+          Favorites {favoritesCount > 0 && <span className="ml-1 opacity-60">({favoritesCount})</span>}
+        </Link>
+        <Link
+          href="/roll?tab=owned"
+          className={`px-4 py-3.5 text-[11px] font-mono tracking-[0.1em] uppercase border-b-2 transition-colors
+            ${activeTab === 'owned'
+              ? 'border-gold text-gold'
+              : 'border-transparent text-muted hover:text-ink'}`}
+        >
+          Owned {ownedCount > 0 && <span className="ml-1 opacity-60">({ownedCount})</span>}
+        </Link>
+      </div>
+
+      {/* Collection filter — Favorites tab only */}
+      {activeTab === 'favorites' && collections.length > 0 && (
         <div className="border-b border-[var(--border)] px-6 py-3 flex gap-2 overflow-x-auto">
           <Link
             href="/roll"
@@ -62,7 +90,7 @@ export default async function RollPage({ searchParams }: PageProps) {
                 ? 'bg-gold text-black border-gold font-bold'
                 : 'border-[var(--border)] text-muted hover:border-gold/50 hover:text-gold'}`}
           >
-            All ({totalSaves})
+            All ({favoritesCount})
           </Link>
           {collections.map((col: any) => (
             <Link
@@ -89,7 +117,13 @@ export default async function RollPage({ searchParams }: PageProps) {
             {saves.map((s: any, i: number) => (
               <WatchCard
                 key={s.id}
-                watch={{ ...s.listing, isLiked: false, isSaved: true, friendLikes: [] } as any}
+                watch={{
+                  ...s.listing,
+                  isLiked: false,
+                  isSaved: activeTab === 'favorites',
+                  isOwned: activeTab === 'owned',
+                  friendLikes: [],
+                } as any}
                 priority={i < 6}
               />
             ))}
@@ -97,12 +131,21 @@ export default async function RollPage({ searchParams }: PageProps) {
         ) : (
           <div className="text-center py-24">
             <div className="text-3xl mb-5 opacity-15">◇</div>
-            <div className="text-[1.1rem] font-semibold mb-2">
-              {activeCollection ? `${activeCollection.name} is empty` : 'Nothing saved yet'}
-            </div>
-            <p className="text-[13px] text-muted mb-5">
-              {activeCollection ? 'Add some watches to get started.' : 'Find something worth saving.'}
-            </p>
+            {activeTab === 'favorites' ? (
+              <>
+                <div className="text-[1.1rem] font-semibold mb-2">
+                  {activeCollection ? `${activeCollection.name} is empty` : 'No favorites yet'}
+                </div>
+                <p className="text-[13px] text-muted mb-5">
+                  {activeCollection ? 'Add some watches to get started.' : 'Save watches you want to track.'}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-[1.1rem] font-semibold mb-2">Nothing owned yet</div>
+                <p className="text-[13px] text-muted mb-5">Mark a watch as owned after you buy it.</p>
+              </>
+            )}
             <Link href="/browse" className="font-mono text-[10px] tracking-[0.1em] uppercase text-gold hover:text-gold-dark transition-colors">
               Browse watches →
             </Link>

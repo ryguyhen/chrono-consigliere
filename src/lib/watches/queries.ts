@@ -111,14 +111,16 @@ export async function getWatches(
   // Attach user-specific like/save state if logged in
   let likedIds = new Set<string>();
   let savedIds = new Set<string>();
+  let ownedIds = new Set<string>();
   if (userId) {
     const ids = watches.map(w => w.id);
-    const [likes, saves] = await Promise.all([
+    const [likes, wishlistItems] = await Promise.all([
       prisma.like.findMany({ where: { userId, listingId: { in: ids } }, select: { listingId: true } }),
-      prisma.wishlistItem.findMany({ where: { userId, listingId: { in: ids } }, select: { listingId: true } }),
+      prisma.wishlistItem.findMany({ where: { userId, listingId: { in: ids } }, select: { listingId: true, list: true } }),
     ]);
     likedIds = new Set(likes.map(l => l.listingId));
-    savedIds = new Set(saves.map(s => s.listingId));
+    savedIds = new Set(wishlistItems.filter(s => s.list === 'FAVORITES').map(s => s.listingId));
+    ownedIds = new Set(wishlistItems.filter(s => s.list === 'OWNED').map(s => s.listingId));
   }
 
   return {
@@ -126,6 +128,7 @@ export async function getWatches(
       ...w,
       isLiked: likedIds.has(w.id),
       isSaved: savedIds.has(w.id),
+      isOwned: ownedIds.has(w.id),
     })) as WatchWithRelations[],
     total,
     page,
@@ -153,16 +156,18 @@ export async function getWatchById(
 
   let isLiked = false;
   let isSaved = false;
+  let isOwned = false;
   if (userId) {
-    const [like, save] = await Promise.all([
+    const [like, wishlistItem] = await Promise.all([
       prisma.like.findUnique({ where: { userId_listingId: { userId, listingId: id } } }),
-      prisma.wishlistItem.findUnique({ where: { userId_listingId: { userId, listingId: id } } }),
+      prisma.wishlistItem.findUnique({ where: { userId_listingId: { userId, listingId: id } }, select: { list: true } }),
     ]);
     isLiked = !!like;
-    isSaved = !!save;
+    isSaved = wishlistItem?.list === 'FAVORITES';
+    isOwned = wishlistItem?.list === 'OWNED';
   }
 
-  return { ...watch, isLiked, isSaved } as WatchWithRelations;
+  return { ...watch, isLiked, isSaved, isOwned } as WatchWithRelations;
 }
 
 export async function getFilterOptions() {

@@ -6,7 +6,7 @@ import { getWatchById } from '@/lib/watches/queries';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import Image from 'next/image';
-import { WatchSaveButton } from '@/components/watches/WatchSaveButton';
+import { WatchRollActions } from '@/components/watches/WatchRollActions';
 import { decodeHtmlEntities } from '@/lib/format';
 
 // DISCLAIMER: This page links to the original dealer website for purchase.
@@ -157,7 +157,10 @@ export default async function WatchDetailPage({ params }: PageProps) {
             >
               View at {watch.source.name} ↗
             </a>
-            <WatchSaveButton watchId={watch.id} initialSaved={watch.isSaved ?? false} />
+            <WatchRollActions
+              watchId={watch.id}
+              initialState={watch.isOwned ? 'owned' : watch.isSaved ? 'favorites' : 'none'}
+            />
           </div>
 
           {/* Specs grid */}
@@ -209,12 +212,6 @@ export default async function WatchDetailPage({ params }: PageProps) {
             </p>
           </div>
 
-          {/* Mark as purchased */}
-          <div className="mt-4">
-            <button className="w-full py-3 text-[12px] tracking-[0.06em] uppercase border border-[var(--border)] rounded hover:border-gold text-muted hover:text-gold transition-colors">
-              Mark as purchased
-            </button>
-          </div>
         </div>
       </div>
     </div>

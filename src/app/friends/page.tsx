@@ -19,7 +19,8 @@ function timeAgo(date: Date): string {
 
 const EVENT_COPY: Record<string, string> = {
   LIKED: 'liked',
-  SAVED: 'added to their roll',
+  SAVED: 'added to favorites',
+  OWNED: 'marked as owned',
   PURCHASED: 'bought',
   INFLUENCED_PURCHASE: 'bought something in your roll',
   FOLLOWED: 'is now following',

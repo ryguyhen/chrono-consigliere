@@ -31,11 +31,13 @@ const CONDITION_LABEL: Record<string, string> = {
 
 export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
   const [saved, setSaved] = useState(watch.isSaved ?? false);
+  const isOwned = watch.isOwned ?? false;
   const friendCount = watch.friendLikes?.length ?? 0;
   const displayTitle = decodeHtmlEntities(watch.model || watch.sourceTitle);
 
   function handleSave(e: React.MouseEvent) {
     e.preventDefault();
+    if (isOwned) return; // owned items are not toggled from the card
     const next = !saved;
     setSaved(next);
     onSave?.(watch.id, next);
@@ -71,19 +73,25 @@ export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
 
-        {/* Save button */}
-        <button
-          onClick={handleSave}
-          className={`absolute top-2.5 right-2.5 w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-150
-            ${saved
-              ? 'bg-gold text-black opacity-100'
-              : 'bg-black/60 text-white/70 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-gold hover:text-black'}`}
-          title={saved ? 'Remove from roll' : 'Add to roll'}
-        >
-          {saved
-            ? <span className="text-[13px] font-bold leading-none">✓</span>
-            : <span className="text-[18px] font-light leading-none">+</span>}
-        </button>
+        {/* Save / owned button */}
+        {isOwned ? (
+          <div className="absolute top-2.5 right-2.5 font-mono text-[8px] tracking-[0.1em] uppercase px-2 py-0.5 bg-gold text-black rounded-sm font-bold">
+            Owned
+          </div>
+        ) : (
+          <button
+            onClick={handleSave}
+            className={`absolute top-2.5 right-2.5 w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-150
+              ${saved
+                ? 'bg-gold text-black opacity-100'
+                : 'bg-black/60 text-white/70 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-gold hover:text-black'}`}
+            title={saved ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            {saved
+              ? <span className="text-[13px] font-bold leading-none">✓</span>
+              : <span className="text-[18px] font-light leading-none">+</span>}
+          </button>
+        )}
 
         {/* Condition badge */}
         {watch.condition && watch.condition !== 'GOOD' && watch.condition !== 'VERY_GOOD' && (

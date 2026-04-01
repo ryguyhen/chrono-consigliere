@@ -251,6 +251,7 @@ model WishlistItem {
   id           String       @id @default(cuid())
   userId       String
   listingId    String
+  list         WatchList    @default(FAVORITES)
   note         String?
   collectionId String?
   createdAt    DateTime     @default(now())
@@ -260,6 +261,11 @@ model WishlistItem {
   collection   Collection?  @relation(fields: [collectionId], references: [id])
 
   @@unique([userId, listingId])
+}
+
+enum WatchList {
+  FAVORITES
+  OWNED
 }
 
 model PurchaseEvent {
@@ -327,6 +333,7 @@ model ActivityFeedEvent {
 enum FeedEventType {
   LIKED
   SAVED
+  OWNED
   PURCHASED
   INFLUENCED_PURCHASE  // someone bought a watch you liked/saved
   FOLLOWED
