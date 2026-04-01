@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import Image from 'next/image';
 import { WatchSaveButton } from '@/components/watches/WatchSaveButton';
+import { decodeHtmlEntities } from '@/lib/format';
 
 // DISCLAIMER: This page links to the original dealer website for purchase.
 // Chrono Consigliere is not a seller.
@@ -16,8 +17,9 @@ interface PageProps { params: { id: string } }
 export async function generateMetadata({ params }: PageProps) {
   const watch = await getWatchById(params.id);
   if (!watch) return { title: 'Watch not found' };
+  const model = decodeHtmlEntities(watch.model ?? watch.sourceTitle);
   return {
-    title: `${watch.brand} ${watch.model} — Chrono Consigliere`,
+    title: `${watch.brand} ${model} — Chrono Consigliere`,
     description: watch.description?.slice(0, 155),
   };
 }
@@ -58,6 +60,7 @@ export default async function WatchDetailPage({ params }: PageProps) {
   const price = watch.sourcePrice ?? (watch.price ? `$${(watch.price / 100).toLocaleString()}` : null);
   const primaryImage = watch.images?.[0];
   const allImages = watch.images;
+  const displayTitle = decodeHtmlEntities(watch.model || watch.sourceTitle);
 
   return (
     <div>
@@ -67,7 +70,7 @@ export default async function WatchDetailPage({ params }: PageProps) {
         <span className="flex-shrink-0">/</span>
         <Link href={`/browse?brand=${encodeURIComponent(watch.brand)}`} className="hover:text-ink flex-shrink-0">{watch.brand}</Link>
         <span className="flex-shrink-0">/</span>
-        <span className="text-ink truncate">{watch.model}</span>
+        <span className="text-ink truncate">{displayTitle}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] min-h-[calc(100vh-96px)]">
@@ -77,7 +80,7 @@ export default async function WatchDetailPage({ params }: PageProps) {
             {primaryImage ? (
               <Image
                 src={primaryImage.url}
-                alt={primaryImage.altText ?? watch.sourceTitle}
+                alt={primaryImage.altText ?? displayTitle}
                 fill
                 sizes="500px"
                 className="object-contain"
@@ -113,7 +116,7 @@ export default async function WatchDetailPage({ params }: PageProps) {
         {/* Info panel */}
         <div className="bg-surface lg:border-l border-t lg:border-t-0 border-[var(--border)] p-5 sm:p-7 overflow-y-auto">
           <div className="text-[11px] font-medium tracking-[0.14em] uppercase text-gold mb-1.5">{watch.brand}</div>
-          <h1 className="text-[1.8rem] font-semibold leading-tight tracking-[-0.03em] mb-2">{watch.model || watch.sourceTitle}</h1>
+          <h1 className="text-[1.8rem] font-semibold leading-tight tracking-[-0.03em] mb-2">{displayTitle}</h1>
           {watch.reference && (
             <div className="font-mono text-[12px] text-muted mb-5">Ref. {watch.reference}{watch.year ? ` · ${watch.year}` : ''}</div>
           )}

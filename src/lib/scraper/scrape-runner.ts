@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db';
 import { getAdapter } from './adapter-registry';
 import type { ScrapedListing } from './base-adapter';
 import { inferBrand } from './brand-inference';
+import { decodeHtmlEntities } from '@/lib/format';
 
 export interface ScrapeJobSummary {
   sourceId: string;
@@ -136,14 +137,16 @@ export async function runScrapeJob(sourceId: string): Promise<ScrapeJobSummary> 
 }
 
 function buildListingData(listing: ScrapedListing, sourceId: string) {
+  const sourceTitle = decodeHtmlEntities(listing.sourceTitle);
+  const model = listing.model ? decodeHtmlEntities(listing.model) : null;
   return {
     sourceId,
     isAvailable: listing.isAvailable,
     lastCheckedAt: new Date(),
     brand: listing.brand
-      || inferBrand(listing.sourceTitle, listing.description ?? undefined)?.brand
+      || inferBrand(sourceTitle, listing.description ?? undefined)?.brand
       || 'Unknown',
-    model: listing.model || listing.sourceTitle,
+    model: model || sourceTitle,
     reference: listing.reference,
     year: listing.year,
     caseSizeMm: listing.caseSizeMm,
@@ -154,7 +157,7 @@ function buildListingData(listing: ScrapedListing, sourceId: string) {
     price: listing.price,
     currency: listing.currency,
     description: listing.description,
-    sourceTitle: listing.sourceTitle,
+    sourceTitle,
     sourcePrice: listing.sourcePrice,
   };
 }

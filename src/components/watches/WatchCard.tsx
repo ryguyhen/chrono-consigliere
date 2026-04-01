@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import type { WatchWithRelations } from '@/types';
+import { decodeHtmlEntities } from '@/lib/format';
 
 interface WatchCardProps {
   watch: WatchWithRelations;
@@ -31,6 +32,7 @@ const CONDITION_LABEL: Record<string, string> = {
 export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
   const [saved, setSaved] = useState(watch.isSaved ?? false);
   const friendCount = watch.friendLikes?.length ?? 0;
+  const displayTitle = decodeHtmlEntities(watch.model || watch.sourceTitle);
 
   function handleSave(e: React.MouseEvent) {
     e.preventDefault();
@@ -52,7 +54,7 @@ export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
         {primaryImage ? (
           <Image
             src={primaryImage.url}
-            alt={primaryImage.altText ?? watch.sourceTitle}
+            alt={primaryImage.altText ?? displayTitle}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
             className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
@@ -97,7 +99,7 @@ export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
           {watch.brand}
         </div>
         <div className="text-[14px] font-medium text-ink leading-snug mb-2 tracking-[-0.01em]">
-          {watch.model || watch.sourceTitle}
+          {displayTitle}
         </div>
 
         <div className="flex items-baseline justify-between">
