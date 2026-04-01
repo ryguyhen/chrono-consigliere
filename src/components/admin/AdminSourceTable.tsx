@@ -51,6 +51,7 @@ const LOG_COLORS: Record<string, string> = {
 export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; recentJobs: Job[] }) {
   const [scraping, setScraping] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState('');
+  const [noPlaywright, setNoPlaywright] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -61,14 +62,18 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
     const key = sourceId ?? 'all';
     setScraping(prev => ({ ...prev, [key]: true }));
     try {
+      const body = sourceId
+        ? { sourceId, ...(noPlaywright ? { noPlaywright: true } : {}) }
+        : { all: true, ...(noPlaywright ? { noPlaywright: true } : {}) };
       const res = await fetch('/api/admin/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sourceId ? { sourceId } : { all: true }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok) {
-        showToast(sourceId ? `Scrape started for ${key}` : `All ${data.queued} scrapers started`);
+        const suffix = noPlaywright ? ' (API-only)' : '';
+        showToast(sourceId ? `Scrape started for ${key}${suffix}` : `All ${data.queued} scrapers started${suffix}`);
       } else {
         showToast(`Error: ${data.error}`);
       }
@@ -100,7 +105,18 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
       {/* Actions bar */}
       <div className="flex justify-between items-center mb-4">
         <div className="text-[12px] font-medium text-ink">Dealer Sources ({sources.length})</div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={noPlaywright}
+              onChange={e => setNoPlaywright(e.target.checked)}
+              className="w-3 h-3 accent-gold"
+            />
+            <span className="text-[10px] uppercase tracking-wide text-muted">
+              Skip Playwright <span className="normal-case text-muted/60">(low memory)</span>
+            </span>
+          </label>
           <button
             onClick={() => triggerScrape()}
             disabled={scraping['all']}
