@@ -36,6 +36,30 @@ export interface SquarespaceAdapterConfig {
   rateLimit?: number;
 }
 
+/**
+ * Returns true only for Squarespace CDN image URLs that are actually renderable.
+ * Rejects:
+ *  - null / empty
+ *  - directory paths (no file extension, trailing slash, or timestamp-only segment)
+ *  - data: URIs
+ * Accepts:
+ *  - images.squarespace-cdn.com URLs
+ *  - static*.squarespace.com URLs that end with an image extension
+ */
+function isValidSquarespaceImageUrl(url: string | null | undefined): url is string {
+  if (!url || url.startsWith('data:')) return false;
+  // Must be https
+  if (!url.startsWith('https://')) return false;
+  // CDN hostname is always valid
+  if (url.includes('images.squarespace-cdn.com')) return true;
+  // static*.squarespace.com — must end with an image extension (not a directory path)
+  if (url.includes('squarespace.com')) {
+    return /\.(jpe?g|png|gif|webp|avif|svg)(\?.*)?$/i.test(url);
+  }
+  // Any other https URL with an image extension
+  return /\.(jpe?g|png|gif|webp|avif|svg)(\?.*)?$/i.test(url);
+}
+
 // Squarespace product grid selectors — tried in order, first match wins
 const CARD_SELECTORS = [
   '[data-item-id]',
@@ -305,7 +329,15 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
                 const price = extract(card, priceSels);
 
                 const imgEl = card.querySelector('img[data-src], img[src]') as HTMLImageElement | null;
-                const imgSrc = imgEl?.dataset?.src ?? imgEl?.src ?? '';
+                let imgSrc = imgEl?.dataset?.src ?? '';
+                if (!imgSrc || imgSrc.startsWith('data:')) imgSrc = imgEl?.src ?? '';
+                if (!imgSrc || imgSrc.startsWith('data:')) {
+                  // Squarespace lazy-loads images; check noscript fallback
+                  const noscript = card.querySelector('noscript');
+                  const m = noscript?.innerHTML?.match(/src="([^"]+)"/);
+                  imgSrc = m?.[1] ?? '';
+                }
+                if (imgSrc.startsWith('data:')) imgSrc = '';
 
                 const cardText = (card.textContent ?? '').toLowerCase();
                 const hasSoldOut =
@@ -358,7 +390,7 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
                 condition: parsed.condition ?? null,
                 style: null,
                 description: card.stockText || null,
-                images: card.imgSrc ? [{ url: card.imgSrc, isPrimary: true }] : [],
+                images: isValidSquarespaceImageUrl(card.imgSrc) ? [{ url: card.imgSrc, isPrimary: true }] : [],
                 isAvailable,
               });
               if (isAvailable) diagnostics.inStock++;
@@ -433,6 +465,46 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
       }
     }
 
+    // Image summary + product-page fallback for any listing still missing images.
+    // The collection ?format=json API returns items with directory-style assetUrls;
+    // the individual product page ?format=json returns the real CDN image URLs.
+    const noImg = listings.filter(l => l.images.length === 0);
+    this.log('info', `Image summary: ${listings.length - noImg.length}/${listings.length} with images, ${noImg.length} missing — fetching product pages for those`);
+    for (const listing of noImg) {
+      try {
+        await this.delay(500);
+        const res = await fetch(`${listing.sourceUrl}?format=json`, {
+          headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' },
+        });
+        if (!res.ok) continue;
+        const data = await res.json() as any;
+        // Product page JSON: top-level item with structuredContent.images, OR
+        // items array containing the product entry
+        const productItem = Array.isArray(data?.items)
+          ? data.items.find((i: any) => i.recordType === 11 || i.recordType === 2)
+          : data?.item ?? null;
+
+        if (productItem) {
+          const imgs: Array<{ url: string; isPrimary: boolean }> = (
+            productItem.structuredContent?.images ?? []
+          )
+            .filter((img: any) => isValidSquarespaceImageUrl(img?.assetUrl))
+            .map((img: any, idx: number) => ({ url: img.assetUrl as string, isPrimary: idx === 0 }));
+
+          if (imgs.length === 0 && isValidSquarespaceImageUrl(productItem.assetUrl)) {
+            imgs.push({ url: productItem.assetUrl as string, isPrimary: true });
+          }
+
+          if (imgs.length > 0) {
+            listing.images = imgs;
+            this.log('info', `  ${listing.sourceTitle}: got ${imgs.length} image(s) from product page`);
+          }
+        }
+      } catch {
+        // ignore individual failures — best-effort
+      }
+    }
+
     return listings;
   }
 
@@ -480,10 +552,23 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
         ? `${currencySymbol}${(Number(priceCentsRaw) / 100).toFixed(2)}`
         : null;
 
-    const imgUrl: string | null =
-      item.assetUrl ??
-      item.structuredContent?.images?.[0]?.assetUrl ??
-      null;
+    // Build image list — prefer structuredContent.images (full gallery with CDN URLs).
+    // item.assetUrl is often a Squarespace asset *directory* path (no filename),
+    // not a renderable image URL, so validate before using it.
+    const structuredImages: Array<{ url: string; isPrimary: boolean }> = (
+      item.structuredContent?.images ?? []
+    )
+      .filter((img: any) => isValidSquarespaceImageUrl(img?.assetUrl))
+      .map((img: any, i: number) => ({ url: img.assetUrl as string, isPrimary: i === 0 }));
+
+    const images: Array<{ url: string; isPrimary: boolean }> =
+      structuredImages.length > 0
+        ? structuredImages
+        : isValidSquarespaceImageUrl(item.assetUrl)
+          ? [{ url: item.assetUrl as string, isPrimary: true }]
+          : isValidSquarespaceImageUrl(item.mainImage?.assetUrl)
+            ? [{ url: item.mainImage.assetUrl as string, isPrimary: true }]
+            : [];
 
     const description = item.body
       ? item.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000)
@@ -508,7 +593,7 @@ export abstract class SquarespaceBaseAdapter extends BaseAdapter {
       condition: parsed.condition ?? null,
       style: null,
       description,
-      images: imgUrl ? [{ url: imgUrl, isPrimary: true }] : [],
+      images,
       isAvailable,
     };
   }
