@@ -7,7 +7,7 @@ import { authOptions } from '@/lib/auth/auth.config';
 import { prisma } from '@/lib/db';
 import { runScrapeJob } from '@/lib/scraper/scrape-runner';
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '').split(',').map(e => e.trim());
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '').split(',').map(e => e.trim()).filter(Boolean);
 
 function isAdmin(email: string | null | undefined) {
   if (!email) return false;
@@ -15,9 +15,20 @@ function isAdmin(email: string | null | undefined) {
   return ADMIN_EMAILS.includes(email);
 }
 
-export async function POST(req: Request) {
+function hasCronAuth(req: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  return req.headers.get('authorization') === `Bearer ${secret}`;
+}
+
+async function requireAdmin(req: Request): Promise<boolean> {
+  if (hasCronAuth(req)) return true;
   const session = await getServerSession(authOptions);
-  if (!isAdmin(session?.user?.email))
+  return isAdmin(session?.user?.email);
+}
+
+export async function POST(req: Request) {
+  if (!(await requireAdmin(req)))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { sourceId, all, debug, noPlaywright, maxPages } = await req.json().catch(() => ({}));
@@ -57,8 +68,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAdmin(session?.user?.email))
+  if (!(await requireAdmin(req)))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { slug, isActive } = await req.json().catch(() => ({}));
@@ -73,8 +83,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAdmin(session?.user?.email))
+  if (!(await requireAdmin(req)))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { slug } = await req.json().catch(() => ({}));
@@ -113,9 +122,8 @@ export async function DELETE(req: Request) {
   });
 }
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!isAdmin(session?.user?.email))
+export async function GET(req: Request) {
+  if (!(await requireAdmin(req)))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const recentJobs = await prisma.scrapeJob.findMany({
