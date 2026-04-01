@@ -10,16 +10,31 @@ export default async function LandingPage() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;
 
-  const [trending, newArrivals, stats] = await Promise.all([
+  const [trending, newArrivals, stats, followingCount, recentTicker] = await Promise.all([
     getTrendingWatches(userId, 6),
     getNewArrivals(8),
     prisma.watchListing.aggregate({
       where: { isAvailable: true },
       _count: { id: true },
     }),
+    userId
+      ? prisma.follow.count({ where: { followerId: userId } })
+      : Promise.resolve(0),
+    prisma.watchListing.findMany({
+      where: { isAvailable: true },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: {
+        brand: true,
+        model: true,
+        sourceTitle: true,
+        source: { select: { name: true } },
+      },
+    }),
   ]);
 
   const totalListings = stats._count.id;
+  const hasCircle = followingCount > 0;
 
   return (
     <div>
@@ -76,31 +91,33 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* WHAT'S MOVING */}
-      <div className="bg-parchment border-b border-[var(--border)] py-3 px-4 overflow-x-hidden">
-        <div className="flex gap-10 text-[11px] text-muted whitespace-nowrap">
-          {[
-            'James added a Rolex Explorer II to his roll',
-            'Marcus bought a Lange 1 — it was on Ryan\'s roll',
-            'New from Goldfinger\'s: Patek 5712A — just landed',
-            'Priya liked 4 this morning',
-            'Just dropped: Heuer Autavia from Craft & Tailored',
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2.5 flex-shrink-0">
-              <span className="w-1 h-1 rounded-full bg-gold/50 flex-shrink-0" />
-              {item}
-            </div>
-          ))}
+      {/* RECENTLY ADDED TICKER */}
+      {recentTicker.length > 0 && (
+        <div className="bg-parchment border-b border-[var(--border)] py-3 px-4 overflow-x-hidden">
+          <div className="flex gap-10 text-[11px] text-muted whitespace-nowrap">
+            {recentTicker.map((w, i) => (
+              <div key={i} className="flex items-center gap-2.5 flex-shrink-0">
+                <span className="w-1 h-1 rounded-full bg-gold/50 flex-shrink-0" />
+                {w.brand && w.model
+                  ? `Just in: ${w.brand} ${w.model}${w.source?.name ? ` — ${w.source.name}` : ''}`
+                  : `Just in: ${w.sourceTitle}${w.source?.name ? ` — ${w.source.name}` : ''}`}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* WHAT YOUR CIRCLE'S INTO */}
+      {/* TRENDING / CIRCLE */}
       {trending.length > 0 && (
         <section className="px-4 sm:px-8 py-10 sm:py-14 max-w-[1200px] mx-auto">
           <div className="flex justify-between items-end mb-5 sm:mb-8">
             <div>
-              <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-1.5 sm:mb-2">Getting around</div>
-              <h2 className="text-[1.3rem] sm:text-[1.6rem] font-semibold tracking-[-0.02em]">What your circle's into</h2>
+              <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-1.5 sm:mb-2">
+                {hasCircle ? 'Getting around' : 'Most saved'}
+              </div>
+              <h2 className="text-[1.3rem] sm:text-[1.6rem] font-semibold tracking-[-0.02em]">
+                {hasCircle ? "What your circle's into" : 'Popular right now'}
+              </h2>
             </div>
             <Link href="/browse?sort=most-liked" className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-gold transition-colors whitespace-nowrap ml-4">
               See all →
