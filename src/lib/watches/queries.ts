@@ -209,10 +209,33 @@ export async function getFilterOptions() {
   };
 }
 
-export async function getTrendingWatches(userId?: string, limit = 8) {
-  return getWatches({ sort: 'most-liked', page: 1 }, userId).then(r => r.watches.slice(0, limit));
+// Listings with at least one real engagement signal, ordered by social rank.
+// Used for the homepage "Popular right now" section.
+// Returns empty array (not dummy inventory) if no engaged listings exist.
+export async function getEngagedListings(limit = 6): Promise<WatchWithRelations[]> {
+  const listings = await prisma.watchListing.findMany({
+    where: {
+      isAvailable: true,
+      duplicateOf: null,
+      OR: [{ likeCount: { gt: 0 } }, { saveCount: { gt: 0 } }],
+    },
+    select: LISTING_SELECT,
+    orderBy: [
+      { likeCount: 'desc' },
+      { saveCount: 'desc' },
+      { createdAt: 'desc' },
+    ],
+    take: limit,
+  });
+  return listings.map(w => ({ ...w, isLiked: false, isSaved: false, isOwned: false })) as WatchWithRelations[];
 }
 
-export async function getNewArrivals(limit = 8) {
-  return getWatches({ sort: 'newest', page: 1 }).then(r => r.watches.slice(0, limit));
+export async function getNewArrivals(limit = 8): Promise<WatchWithRelations[]> {
+  const listings = await prisma.watchListing.findMany({
+    where: { isAvailable: true, duplicateOf: null },
+    select: LISTING_SELECT,
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+  return listings.map(w => ({ ...w, isLiked: false, isSaved: false, isOwned: false })) as WatchWithRelations[];
 }

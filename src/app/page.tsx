@@ -2,24 +2,25 @@
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth.config';
-import { getTrendingWatches, getNewArrivals } from '@/lib/watches/queries';
+import { getEngagedListings, getNewArrivals } from '@/lib/watches/queries';
 import { WatchCard } from '@/components/watches/WatchCard';
 import { prisma } from '@/lib/db';
+import { Suspense } from 'react';
+
+// Minimum engaged listings required to show the social section.
+// Below this threshold the section is hidden — no fake-popular inventory.
+const MIN_ENGAGED = 3;
 
 export default async function LandingPage() {
   const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
 
-  const [trending, newArrivals, stats, followingCount, recentTicker, dealerCount] = await Promise.all([
-    getTrendingWatches(userId, 6),
-    getNewArrivals(8),
+  // Only fetch what's needed above the fold: hero stats + ticker.
+  const [stats, dealerCount, recentTicker] = await Promise.all([
     prisma.watchListing.aggregate({
       where: { isAvailable: true },
       _count: { id: true },
     }),
-    userId
-      ? prisma.follow.count({ where: { followerId: userId } })
-      : Promise.resolve(0),
+    prisma.dealerSource.count({ where: { isActive: true } }),
     prisma.watchListing.findMany({
       where: { isAvailable: true },
       orderBy: { createdAt: 'desc' },
@@ -31,11 +32,9 @@ export default async function LandingPage() {
         source: { select: { name: true } },
       },
     }),
-    prisma.dealerSource.count({ where: { isActive: true } }),
   ]);
 
   const totalListings = stats._count.id;
-  const hasCircle = followingCount > 0;
 
   return (
     <div>
@@ -49,7 +48,7 @@ export default async function LandingPage() {
             Start your roll.
           </h1>
           <p className="text-[14px] sm:text-[15px] text-white/50 max-w-[380px] sm:max-w-[420px] mx-auto mb-8 sm:mb-10 leading-relaxed font-normal">
-            Build your watch box, follow your friends, and keep up with what's good.
+            Build your watch box, follow your friends, and keep up with what&apos;s good.
           </p>
           <div className="flex gap-3 justify-center">
             {!session ? (
@@ -108,55 +107,82 @@ export default async function LandingPage() {
         </div>
       )}
 
-      {/* TRENDING / CIRCLE */}
-      {trending.length > 0 && (
-        <section className="px-4 sm:px-8 py-10 sm:py-14 max-w-[1200px] mx-auto">
-          <div className="flex justify-between items-end mb-5 sm:mb-8">
-            <div>
-              <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-1.5 sm:mb-2">
-                {hasCircle ? 'Getting around' : 'Most saved'}
-              </div>
-              <h2 className="text-[1.3rem] sm:text-[1.6rem] font-semibold tracking-[-0.02em]">
-                {hasCircle ? "What your circle's into" : 'Popular right now'}
-              </h2>
-            </div>
-            <Link href="/browse?sort=most-liked" className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-gold transition-colors whitespace-nowrap ml-4">
-              See all →
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-5">
-            {trending.map(watch => (
-              <WatchCard key={watch.id} watch={watch} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* POPULAR RIGHT NOW — streams in after hero */}
+      <Suspense fallback={null}>
+        <EngagedSection />
+      </Suspense>
 
-      {newArrivals.length > 0 && trending.length > 0 && (
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-8">
-          <div className="border-t border-[var(--border)]" />
-        </div>
-      )}
-
-      {/* NEW IN */}
-      {newArrivals.length > 0 && (
-        <section className="px-4 sm:px-8 py-10 sm:py-14 max-w-[1200px] mx-auto">
-          <div className="flex justify-between items-end mb-5 sm:mb-8">
-            <div>
-              <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-1.5 sm:mb-2">Just dropped</div>
-              <h2 className="text-[1.3rem] sm:text-[1.6rem] font-semibold tracking-[-0.02em]">New in</h2>
-            </div>
-            <Link href="/browse?sort=newest" className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-gold transition-colors whitespace-nowrap ml-4">
-              See all →
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-5">
-            {newArrivals.map(watch => (
-              <WatchCard key={watch.id} watch={watch} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* NEW IN — streams in after hero */}
+      <Suspense fallback={null}>
+        <NewInSection />
+      </Suspense>
     </div>
+  );
+}
+
+async function EngagedSection() {
+  const listings = await getEngagedListings(6);
+  if (listings.length < MIN_ENGAGED) return null;
+
+  return (
+    <section className="px-4 sm:px-8 py-10 sm:py-14 max-w-[1200px] mx-auto">
+      <div className="flex justify-between items-end mb-5 sm:mb-8">
+        <div>
+          <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-1.5 sm:mb-2">
+            Most saved
+          </div>
+          <h2 className="text-[1.3rem] sm:text-[1.6rem] font-semibold tracking-[-0.02em]">
+            Popular right now
+          </h2>
+        </div>
+        <Link
+          href="/browse?sort=most-liked"
+          className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-gold transition-colors whitespace-nowrap ml-4"
+        >
+          See all →
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-5">
+        {listings.map(watch => (
+          <WatchCard key={watch.id} watch={watch} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+async function NewInSection() {
+  const listings = await getNewArrivals(8);
+  if (!listings.length) return null;
+
+  return (
+    <>
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8">
+        <div className="border-t border-[var(--border)]" />
+      </div>
+      <section className="px-4 sm:px-8 py-10 sm:py-14 max-w-[1200px] mx-auto">
+        <div className="flex justify-between items-end mb-5 sm:mb-8">
+          <div>
+            <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-1.5 sm:mb-2">
+              Just dropped
+            </div>
+            <h2 className="text-[1.3rem] sm:text-[1.6rem] font-semibold tracking-[-0.02em]">
+              New in
+            </h2>
+          </div>
+          <Link
+            href="/browse?sort=newest"
+            className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-gold transition-colors whitespace-nowrap ml-4"
+          >
+            See all →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-5">
+          {listings.map(watch => (
+            <WatchCard key={watch.id} watch={watch} />
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
