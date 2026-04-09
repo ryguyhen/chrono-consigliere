@@ -58,17 +58,23 @@ export default async function WatchDetailPage({ params }: PageProps) {
   }
 
   const price = formatPrice(watch.price, watch.currency);
+  const isPOR = !watch.price || watch.price <= 0;
   const primaryImage = watch.images?.[0];
   const allImages = watch.images;
   const displayTitle = decodeHtmlEntities(watch.model || watch.sourceTitle);
+  const knownBrand = watch.brand && watch.brand !== 'Unknown' ? watch.brand : null;
 
   return (
     <div>
       {/* Breadcrumb */}
       <div className="px-4 sm:px-6 py-3 bg-surface border-b border-[var(--border)] flex items-center gap-2 text-[12px] text-muted overflow-hidden">
         <Link href="/browse" className="hover:text-ink flex-shrink-0">Browse</Link>
-        <span className="flex-shrink-0">/</span>
-        <Link href={`/browse?brand=${encodeURIComponent(watch.brand)}`} className="hover:text-ink flex-shrink-0">{watch.brand}</Link>
+        {knownBrand && (
+          <>
+            <span className="flex-shrink-0">/</span>
+            <Link href={`/browse?brand=${encodeURIComponent(knownBrand)}`} className="hover:text-ink flex-shrink-0">{knownBrand}</Link>
+          </>
+        )}
         <span className="flex-shrink-0">/</span>
         <span className="text-ink truncate">{displayTitle}</span>
       </div>
@@ -115,14 +121,19 @@ export default async function WatchDetailPage({ params }: PageProps) {
 
         {/* Info panel */}
         <div className="bg-surface lg:border-l border-t lg:border-t-0 border-[var(--border)] p-5 sm:p-7 overflow-y-auto">
-          <div className="text-[11px] font-medium tracking-[0.14em] uppercase text-gold mb-1.5">{watch.brand}</div>
+          {knownBrand && (
+            <div className="text-[11px] font-medium tracking-[0.14em] uppercase text-gold mb-1.5">{knownBrand}</div>
+          )}
           <h1 className="text-[1.8rem] font-semibold leading-tight tracking-[-0.03em] mb-2">{displayTitle}</h1>
           {watch.reference && (
             <div className="font-mono text-[12px] text-muted mb-5">Ref. {watch.reference}{watch.year ? ` · ${watch.year}` : ''}</div>
           )}
 
           {/* Price */}
-          <div className="text-[2.2rem] font-semibold tracking-[-0.03em] mb-1">{price}</div>
+          <div className={isPOR
+            ? 'text-[1rem] text-muted font-medium tracking-wide mb-1'
+            : 'text-[2.2rem] font-semibold tracking-[-0.03em] mb-1'
+          }>{price}</div>
           <div className="flex items-center gap-1.5 text-[12px] text-[var(--success)] font-medium mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] inline-block" />
             In Stock

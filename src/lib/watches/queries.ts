@@ -149,7 +149,7 @@ export async function getWatchById(
   userId?: string
 ): Promise<WatchWithRelations | null> {
   const watch = await prisma.watchListing.findFirst({
-    where: { id, source: { isActive: true } },
+    where: { id, duplicateOf: null, source: { isActive: true } },
     select: {
       ...LISTING_SELECT,
       images: {
@@ -181,7 +181,9 @@ export async function getFilterOptions() {
   const [brands, styles, movements, conditions, dealers] = await Promise.all([
     prisma.watchListing.groupBy({
       by: ['brand'],
-      where: { ...PUBLIC_WHERE },
+      // Exclude "Unknown" — it's a scraper fallback value, not a meaningful filter target.
+      // Browsing by Unknown is not useful and it would otherwise dominate the list.
+      where: { ...PUBLIC_WHERE, brand: { not: 'Unknown' } },
       _count: true,
       orderBy: { _count: { brand: 'desc' } },
       take: 60,

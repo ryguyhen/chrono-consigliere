@@ -37,9 +37,12 @@ export async function POST(req: Request) {
   if (task === 'fix-zero-prices') {
     return runZeroPriceBackfill();
   }
+  if (task === 'fix-counts') {
+    return runCountReconciliation();
+  }
 
   return NextResponse.json(
-    { error: 'task required: "brands" | "html-entities" | "fix-zero-prices"' },
+    { error: 'task required: "brands" | "html-entities" | "fix-zero-prices" | "fix-counts"' },
     { status: 400 },
   );
 }
@@ -106,6 +109,24 @@ async function runHtmlEntityBackfill() {
   }
 
   return NextResponse.json({ task: 'html-entities', processed, fixed });
+}
+
+/**
+ * Reconcile denormalized likeCount / saveCount against the actual Like and
+ * WishlistItem rows. Corrects any drift that occurred before the gt:0 guards
+ * were added. Safe to run at any time — only touches rows where counts differ.
+ */
+async function runCountReconciliation() {
+  const fixed = await prisma.$executeRaw`
+    UPDATE "WatchListing"
+    SET
+      "likeCount"  = (SELECT COUNT(*)::int FROM "Like"         WHERE "listingId" = "WatchListing".id),
+      "saveCount"  = (SELECT COUNT(*)::int FROM "WishlistItem" WHERE "listingId" = "WatchListing".id)
+    WHERE
+      "likeCount"  != (SELECT COUNT(*)::int FROM "Like"         WHERE "listingId" = "WatchListing".id)
+      OR "saveCount" != (SELECT COUNT(*)::int FROM "WishlistItem" WHERE "listingId" = "WatchListing".id)
+  `;
+  return NextResponse.json({ task: 'fix-counts', fixed });
 }
 
 /**
