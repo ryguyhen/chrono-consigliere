@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth.config';
 import { prisma } from '@/lib/db';
 import { AdminSourceTable } from '@/components/admin/AdminSourceTable';
+import { listRegisteredAdapters } from '@/lib/scraper/adapter-registry';
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '').split(',').map(s => s.trim()).filter(Boolean);
 
@@ -41,6 +42,10 @@ export default async function AdminPage() {
 
   const totalListings = listingStats._count.id;
   const activeSources = sources.filter(s => s.isActive).length;
+
+  const registeredAdapters = listRegisteredAdapters().sort();
+  const sourceAdapterNames = new Set(sources.map(s => s.adapterName));
+  const unregisteredAdapters = registeredAdapters.filter(a => !sourceAdapterNames.has(a));
   const lastSync = sources
     .map(s => s.lastSyncAt)
     .filter(Boolean)
@@ -71,7 +76,12 @@ export default async function AdminPage() {
         ))}
       </div>
 
-      <AdminSourceTable sources={sources as any} recentJobs={recentJobs as any} />
+      <AdminSourceTable
+        sources={sources as any}
+        recentJobs={recentJobs as any}
+        registeredAdapters={registeredAdapters}
+        unregisteredAdapters={unregisteredAdapters}
+      />
     </div>
   );
 }

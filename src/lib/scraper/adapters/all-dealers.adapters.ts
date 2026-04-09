@@ -691,3 +691,47 @@ export class BulangAndSonsAdapter extends ShopifyBaseAdapter {
     return parsed;
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// 21. A COLLECTED MAN [Shopify] — London, UK
+//     URL: acollectedman.com
+//     Focus: Independent watchmakers — F.P. Journe, Roger W. Smith,
+//            MB&F, Greubel Forsey, De Bethune, and more.
+//     Platform: Shopify on watchxchange-2.myshopify.com
+//     Collection: /collections/all-watches — watch-only, no accessories.
+//
+//     Key quirks:
+//     • Titles are model-only, e.g. "Series 2 | White Gold" — the brand
+//       is absent from the title and must be taken from the `vendor` field
+//       (Shopify's canonical brand/maker field). inferBrand() cannot help.
+//     • All prices are 0.00 — ACM is Price on Request (POR) only.
+//       price will be null after parsePrice(); sourcePrice likewise null.
+//     • `available: true` with `inventory_management: null` = in stock.
+//     • product_type is consistently "Watch" across the catalog.
+//
+//     Filtering: product_type "Watch" positive gate is sufficient.
+//     The all-watches collection is already watch-only.
+// ─────────────────────────────────────────────────────────────
+export class ACollectedManAdapter extends ShopifyBaseAdapter {
+  constructor() {
+    super({
+      sourceId: '',
+      sourceName: 'A Collected Man',
+      baseUrl: 'https://www.acollectedman.com',
+      watchCollectionHandle: 'all-watches',
+      // All items in this collection are watches — positive gate enforces it cleanly.
+      watchIndicatorTypes: ['watch'],
+      rateLimit: 1500,
+    });
+  }
+
+  /**
+   * Use Shopify's `vendor` field as the authoritative brand source.
+   * ACM product titles omit the brand entirely (e.g. "Series 2 | White Gold"
+   * for a Roger W. Smith), so inferBrand() on the title always returns null.
+   * The vendor field contains the canonical maker name.
+   */
+  protected override extractBrand(vendor: string | undefined, parsed: Partial<ScrapedListing>): string | null {
+    return vendor ?? parsed.brand ?? null;
+  }
+}

@@ -46,6 +46,8 @@ interface ShopifyProduct {
   published_at: string | null;
   variants: ShopifyVariant[];
   images: ShopifyImage[];
+  /** Brand/maker name — reliably set on some stores (e.g. A Collected Man). May be absent. */
+  vendor?: string;
 }
 
 interface ShopifyVariant {
@@ -354,7 +356,7 @@ export abstract class ShopifyBaseAdapter extends BaseAdapter {
             sourceUrl: `${this.shopifyConfig.baseUrl}/products/${product.handle}`,
             sourceTitle: product.title,
             sourcePrice: primaryVariant?.price && parseFloat(primaryVariant.price) > 0 ? `$${primaryVariant.price}` : null,
-            brand: parsed.brand ?? null,
+            brand: this.extractBrand(product.vendor, parsed),
             model: parsed.model ?? null,
             reference: parsed.reference ?? null,
             year: parsed.year ?? null,
@@ -431,6 +433,16 @@ export abstract class ShopifyBaseAdapter extends BaseAdapter {
         dropReasons: Object.fromEntries(Object.entries(dropped).map(([k, v]) => [k, v.length])),
       },
     };
+  }
+
+  /**
+   * Hook for subclasses to override brand extraction.
+   * Default: use whatever inferBrand resolved from title + description.
+   * Override when the Shopify store's `vendor` field is more reliable than title inference
+   * (e.g. A Collected Man, where titles like "Series 2 | White Gold" omit the brand).
+   */
+  protected extractBrand(vendor: string | undefined, parsed: Partial<ScrapedListing>): string | null {
+    return parsed.brand ?? null;
   }
 
   protected stripHtml(html: string | null): string | null {

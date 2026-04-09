@@ -1,6 +1,7 @@
 // src/components/admin/AdminSourceTable.tsx
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Source {
   id: string;
@@ -48,14 +49,27 @@ const LOG_COLORS: Record<string, string> = {
   DEBUG: 'text-cream/30',
 };
 
-export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; recentJobs: Job[] }) {
+export function AdminSourceTable({
+  sources,
+  recentJobs,
+  registeredAdapters,
+  unregisteredAdapters,
+}: {
+  sources: Source[];
+  recentJobs: Job[];
+  registeredAdapters: string[];
+  unregisteredAdapters: string[];
+}) {
+  const router = useRouter();
   const [scraping, setScraping] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState('');
   const [noPlaywright, setNoPlaywright] = useState(false);
+  const [modal, setModal] = useState<'add' | 'edit' | null>(null);
+  const [editSource, setEditSource] = useState<Source | null>(null);
 
   function showToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(''), 3000);
+    setTimeout(() => setToast(''), 3500);
   }
 
   async function triggerScrape(sourceId?: string) {
@@ -73,7 +87,7 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
       const data = await res.json();
       if (res.ok) {
         const suffix = noPlaywright ? ' (API-only)' : '';
-        showToast(sourceId ? `Scrape started for ${key}${suffix}` : `All ${data.queued} scrapers started${suffix}`);
+        showToast(sourceId ? `Scrape started${suffix}` : `All ${data.queued} scrapers started${suffix}`);
       } else {
         showToast(`Error: ${data.error}`);
       }
@@ -93,12 +107,41 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
     return d.toLocaleDateString();
   }
 
+  function openAdd() {
+    setEditSource(null);
+    setModal('add');
+  }
+
+  function openEdit(s: Source) {
+    setEditSource(s);
+    setModal('edit');
+  }
+
+  function handleSaved() {
+    setModal(null);
+    setEditSource(null);
+    router.refresh();
+  }
+
   return (
     <div>
       {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 right-6 bg-ink text-cream text-[13px] px-4 py-3 rounded shadow-xl z-50 max-w-sm">
           {toast}
+        </div>
+      )}
+
+      {/* Unregistered adapters notice */}
+      {unregisteredAdapters.length > 0 && (
+        <div className="mb-4 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-[12px] text-amber-800">
+          <span className="font-semibold">
+            {unregisteredAdapters.length} adapter{unregisteredAdapters.length !== 1 ? 's' : ''} in code with no DB record:{' '}
+          </span>
+          {unregisteredAdapters.join(', ')}
+          <span className="text-amber-600">
+            {' '}— these won&apos;t be scraped until added.
+          </span>
         </div>
       )}
 
@@ -125,7 +168,7 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
             {scraping['all'] ? 'Running…' : 'Run all scrapers'}
           </button>
           <button
-            onClick={() => showToast('Add source UI coming soon — use seed-dealers.ts for now')}
+            onClick={openAdd}
             className="text-[11px] uppercase tracking-wide px-3 py-1.5 bg-gold text-ink rounded hover:bg-gold-dark transition-colors"
           >
             + Add source
@@ -138,7 +181,7 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
         <table className="w-full">
           <thead>
             <tr className="bg-parchment border-b border-[var(--border)]">
-              {['Source', 'Platform', 'Status', 'Listings', 'Last sync', 'Actions'].map(h => (
+              {['Source', 'Adapter', 'Status', 'Listings', 'Last sync', 'Actions'].map(h => (
                 <th key={h} className="text-left px-4 py-2.5 text-[10px] uppercase tracking-[0.1em] text-muted font-medium">
                   {h}
                 </th>
@@ -148,13 +191,21 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
           <tbody>
             {sources.map(source => {
               const lastJob = source.scrapeJobs[0];
-              const status = lastJob?.status ?? (source.isActive ? 'NEVER_RUN' : 'DISABLED');
-              const platform = (source.scrapeConfig?.platform as string) ?? 'shopify';
 
               return (
-                <tr key={source.id} className="border-b border-[var(--border-soft)] hover:bg-parchment/40 transition-colors">
+                <tr
+                  key={source.id}
+                  className={`border-b border-[var(--border-soft)] hover:bg-parchment/40 transition-colors ${!source.isActive ? 'opacity-50' : ''}`}
+                >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-[13px] text-ink">{source.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-[13px] text-ink">{source.name}</span>
+                      {!source.isActive && (
+                        <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+                          disabled
+                        </span>
+                      )}
+                    </div>
                     <a
                       href={source.baseUrl}
                       target="_blank"
@@ -166,7 +217,7 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
                   </td>
                   <td className="px-4 py-3">
                     <code className="font-mono text-[10px] bg-parchment px-1.5 py-0.5 rounded text-ink/70">
-                      {platform}
+                      {source.adapterName}
                     </code>
                   </td>
                   <td className="px-4 py-3">
@@ -194,13 +245,13 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
                     <div className="flex gap-1.5">
                       <button
                         onClick={() => triggerScrape(source.id)}
-                        disabled={scraping[source.id]}
-                        className="text-[10px] uppercase tracking-wide px-2 py-1 border border-[var(--border)] rounded hover:border-gold hover:text-gold text-muted transition-colors disabled:opacity-50"
+                        disabled={scraping[source.id] || !source.isActive}
+                        className="text-[10px] uppercase tracking-wide px-2 py-1 border border-[var(--border)] rounded hover:border-gold hover:text-gold text-muted transition-colors disabled:opacity-40"
                       >
                         {scraping[source.id] ? '…' : 'Scrape'}
                       </button>
                       <button
-                        onClick={() => showToast(`Edit ${source.name} — use DB or config file`)}
+                        onClick={() => openEdit(source)}
                         className="text-[10px] uppercase tracking-wide px-2 py-1 border border-[var(--border)] rounded hover:border-ink text-muted transition-colors"
                       >
                         Edit
@@ -246,6 +297,200 @@ export function AdminSourceTable({ sources, recentJobs }: { sources: Source[]; r
             ]).filter(Boolean)
           )}
         </div>
+      </div>
+
+      {/* Add / Edit modal */}
+      {modal && (
+        <SourceModal
+          mode={modal}
+          source={editSource}
+          registeredAdapters={registeredAdapters}
+          onClose={() => { setModal(null); setEditSource(null); }}
+          onSaved={handleSaved}
+          showToast={showToast}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Source modal ─────────────────────────────────────────────
+
+function toSlug(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function SourceModal({
+  mode,
+  source,
+  registeredAdapters,
+  onClose,
+  onSaved,
+  showToast,
+}: {
+  mode: 'add' | 'edit';
+  source: Source | null;
+  registeredAdapters: string[];
+  onClose: () => void;
+  onSaved: () => void;
+  showToast: (msg: string) => void;
+}) {
+  const [name, setName] = useState(source?.name ?? '');
+  const [slug, setSlug] = useState(source?.slug ?? '');
+  const [adapterName, setAdapterName] = useState(source?.adapterName ?? '');
+  const [baseUrl, setBaseUrl] = useState(source?.baseUrl ?? '');
+  const [isActive, setIsActive] = useState(source?.isActive ?? true);
+  const [slugTouched, setSlugTouched] = useState(mode === 'edit');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  function handleNameChange(v: string) {
+    setName(v);
+    if (!slugTouched) setSlug(toSlug(v));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const res = await fetch('/api/admin/sources', {
+      method: mode === 'add' ? 'POST' : 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        mode === 'add'
+          ? { name, slug, adapterName, baseUrl, isActive }
+          : { id: source!.id, name, slug, adapterName, baseUrl, isActive }
+      ),
+    });
+
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error ?? 'Something went wrong');
+      return;
+    }
+
+    showToast(mode === 'add' ? `Source "${name}" created` : `"${name}" updated`);
+    onSaved();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-surface border border-[var(--border)] rounded-xl p-6 w-full max-w-[440px] shadow-2xl">
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="font-semibold text-[15px] tracking-[-0.01em]">
+            {mode === 'add' ? 'Add source' : `Edit — ${source?.name}`}
+          </h2>
+          <button onClick={onClose} className="text-muted hover:text-ink text-xl leading-none">×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block font-mono text-[9px] uppercase tracking-[0.12em] text-muted mb-1.5">
+              Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => handleNameChange(e.target.value)}
+              placeholder="A Collected Man"
+              required
+              className="w-full px-3 py-2 border border-[var(--border)] rounded bg-parchment text-[13px] outline-none focus:border-gold transition-colors"
+            />
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label className="block font-mono text-[9px] uppercase tracking-[0.12em] text-muted mb-1.5">
+              Slug <span className="normal-case tracking-normal text-muted/60">(unique, URL-safe)</span>
+            </label>
+            <input
+              type="text"
+              value={slug}
+              onChange={e => { setSlugTouched(true); setSlug(e.target.value); }}
+              placeholder="a-collected-man"
+              required
+              pattern="[a-z0-9-]+"
+              title="Lowercase letters, numbers, and hyphens only"
+              className="w-full px-3 py-2 border border-[var(--border)] rounded bg-parchment text-[13px] font-mono outline-none focus:border-gold transition-colors"
+            />
+          </div>
+
+          {/* Adapter name */}
+          <div>
+            <label className="block font-mono text-[9px] uppercase tracking-[0.12em] text-muted mb-1.5">
+              Adapter
+            </label>
+            <select
+              value={adapterName}
+              onChange={e => setAdapterName(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-[var(--border)] rounded bg-parchment text-[13px] font-mono outline-none focus:border-gold transition-colors"
+            >
+              <option value="">— select adapter —</option>
+              {registeredAdapters.map(a => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Base URL */}
+          <div>
+            <label className="block font-mono text-[9px] uppercase tracking-[0.12em] text-muted mb-1.5">
+              Base URL
+            </label>
+            <input
+              type="url"
+              value={baseUrl}
+              onChange={e => setBaseUrl(e.target.value)}
+              placeholder="https://www.example.com"
+              required
+              className="w-full px-3 py-2 border border-[var(--border)] rounded bg-parchment text-[13px] outline-none focus:border-gold transition-colors"
+            />
+          </div>
+
+          {/* isActive */}
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={e => setIsActive(e.target.checked)}
+              className="w-3.5 h-3.5 accent-gold"
+            />
+            <span className="text-[12px] text-ink">Active <span className="text-muted">(will be included in scrape runs)</span></span>
+          </label>
+
+          {/* Error */}
+          {error && (
+            <div className="text-[12px] text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">
+              {error}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-gold text-black text-[11px] font-bold tracking-[0.08em] uppercase py-2.5 rounded hover:bg-gold-dark transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Saving…' : mode === 'add' ? 'Create source' : 'Save changes'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 border border-[var(--border)] rounded text-[11px] uppercase tracking-wide text-muted hover:text-ink transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
