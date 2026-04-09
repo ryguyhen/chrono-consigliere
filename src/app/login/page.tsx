@@ -6,19 +6,18 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 
 // NextAuth redirects to /login?error=<code> on OAuth failures.
-// Map known codes to human-readable messages.
 function oauthErrorMessage(code: string | null): string | null {
   if (!code) return null;
   switch (code) {
     case 'OAuthAccountNotLinked':
-      return 'This email is already registered. Sign in with your password, or use Google once you\'re logged in to link accounts.';
+      // Account exists with credentials — direct them to use their password.
+      // (Our signIn callback pre-links accounts, so this only fires if that step failed.)
+      return 'This email is already registered with a password. Sign in with your password below.';
     case 'OAuthCallback':
     case 'Callback':
-      return 'Google sign-in failed. Make sure Google is configured correctly and try again.';
+      return 'Google sign-in failed. Check that Google OAuth is configured and try again.';
     case 'OAuthCreateAccount':
-      return 'Could not create your account. Please try again.';
-    case 'EmailSignin':
-      return 'Could not send sign-in email.';
+      return 'Could not create your account via Google. Please try again.';
     case 'CredentialsSignin':
       return 'Invalid email or password.';
     case 'SessionRequired':
@@ -32,10 +31,13 @@ function LoginForm() {
   const { data: session } = useSession();
   const router = useRouter();
   const params = useSearchParams();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(oauthErrorMessage(params.get('error')) ?? '');
+  // Tracks whether the most recent credentials attempt failed — shows recovery hint.
+  const [showRecoveryHint, setShowRecoveryHint] = useState(false);
 
   useEffect(() => {
     if (session) router.push('/');
@@ -45,14 +47,16 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setShowRecoveryHint(false);
+
     const res = await signIn('credentials', { email, password, redirect: false });
     setLoading(false);
+
     if (res?.error) {
-      if (res.error === 'CredentialsSignin') {
-        setError('Invalid email or password.');
-      } else {
-        setError('Sign-in failed. Please try again.');
-      }
+      setError('Invalid email or password.');
+      // Only surface the set-password hint after a real credentials failure,
+      // not on initial load from a URL ?error= param.
+      setShowRecoveryHint(true);
     } else {
       router.push('/');
     }
@@ -105,11 +109,13 @@ function LoginForm() {
           {error && (
             <div className="text-[12px] text-red-400 bg-red-950/50 border border-red-900/50 rounded px-3 py-2 space-y-1">
               <div>{error}</div>
-              {/* Show recovery hint if it looks like a no-password account */}
-              {params.get('error') === 'CredentialsSignin' && (
+              {showRecoveryHint && (
                 <div className="text-muted">
-                  No password?{' '}
-                  <Link href={`/set-password${email ? `?email=${encodeURIComponent(email)}` : ''}`} className="text-gold hover:text-gold-dark">
+                  No password set?{' '}
+                  <Link
+                    href={`/set-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
+                    className="text-gold hover:text-gold-dark"
+                  >
                     Set one here
                   </Link>
                 </div>
@@ -148,7 +154,7 @@ function LoginForm() {
             </Link>
           </div>
           <div className="text-[11px] text-muted/60">
-            Old account, no password?{' '}
+            No password set?{' '}
             <Link href="/set-password" className="text-gold/70 hover:text-gold">
               Set one here
             </Link>

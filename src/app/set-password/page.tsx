@@ -13,12 +13,14 @@ function SetPasswordForm() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
   const [done, setDone] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setErrorCode('');
 
     const res = await fetch('/api/set-password', {
       method: 'POST',
@@ -30,11 +32,8 @@ function SetPasswordForm() {
     setLoading(false);
 
     if (!res.ok) {
-      if (data.code === 'HAS_PASSWORD') {
-        setError('This account already has a password. Sign in on the login page.');
-      } else {
-        setError(data.error ?? 'Something went wrong.');
-      }
+      setError(data.error ?? 'Something went wrong.');
+      setErrorCode(data.code ?? '');
     } else {
       setDone(true);
     }
@@ -69,7 +68,7 @@ function SetPasswordForm() {
         ) : (
           <>
             <p className="text-[12px] text-muted mb-5 leading-relaxed text-center">
-              For accounts created before passwords were required. Enter your email and choose a new password.
+              If you signed up with Google or before passwords were added, enter your email and choose a password to enable email sign-in.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -106,12 +105,14 @@ function SetPasswordForm() {
               </div>
 
               {error && (
-                <div className="text-[12px] text-red-400 bg-red-950/50 border border-red-900/50 rounded px-3 py-2">
-                  {error}
-                  {error.includes('already has a password') && (
-                    <Link href="/login" className="block mt-1 text-gold hover:text-gold-dark">
-                      Go to login →
-                    </Link>
+                <div className="text-[12px] text-red-400 bg-red-950/50 border border-red-900/50 rounded px-3 py-2 space-y-1">
+                  <div>{error}</div>
+                  {errorCode === 'HAS_PASSWORD' && (
+                    <div>
+                      <Link href="/login" className="text-gold hover:text-gold-dark">
+                        Go to sign in →
+                      </Link>
+                    </div>
                   )}
                 </div>
               )}
