@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { followUser, unfollowUser } from '@/lib/api/client';
 
 export function FollowButton({ userId, initialIsFollowing }: { userId: string; initialIsFollowing: boolean }) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
@@ -7,9 +8,8 @@ export function FollowButton({ userId, initialIsFollowing }: { userId: string; i
 
   async function toggle() {
     setLoading(true);
-    const method = isFollowing ? 'DELETE' : 'POST';
-    const res = await fetch(`/api/follow/${userId}`, { method });
-    if (res.ok) setIsFollowing(!isFollowing);
+    const result = await (isFollowing ? unfollowUser(userId) : followUser(userId));
+    if (result.ok) setIsFollowing(!isFollowing);
     setLoading(false);
   }
 

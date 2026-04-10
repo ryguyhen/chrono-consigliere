@@ -9,16 +9,29 @@ interface NavProps {
   session: Session | null;
 }
 
-const NAV_LINKS = [
-  { href: '/browse', label: 'Browse' },
-  { href: '/roll', label: 'Roll' },
+const DESKTOP_NAV_LINKS = [
+  { href: '/browse',  label: 'Browse'  },
+  { href: '/roll',    label: 'Roll'    },
   { href: '/friends', label: 'Friends' },
 ];
 
 function isActive(pathname: string, href: string) {
-  if (href === '/roll') return pathname.startsWith('/roll');
+  if (href === '/')        return pathname === '/';
+  if (href === '/roll')    return pathname.startsWith('/roll');
   if (href === '/friends') return pathname.startsWith('/friends') || pathname.startsWith('/people');
+  if (href === '/profile') return pathname.startsWith('/profile');
   return pathname === href || pathname.startsWith(href + '/');
+}
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+
+function IconHome({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
 }
 
 function IconBrowse({ active }: { active: boolean }) {
@@ -51,10 +64,23 @@ function IconFriends({ active }: { active: boolean }) {
   );
 }
 
+function IconProfile({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+// ─── Bottom nav tabs (mobile) — 5-tab app model ───────────────────────────────
+//   Home | Browse | Roll | Friends | Profile
 const BOTTOM_NAV = [
-  { href: '/browse', label: 'Browse', Icon: IconBrowse },
-  { href: '/roll', label: 'Roll', Icon: IconRoll },
+  { href: '/',        label: 'Home',    Icon: IconHome    },
+  { href: '/browse',  label: 'Browse',  Icon: IconBrowse  },
+  { href: '/roll',    label: 'Roll',    Icon: IconRoll    },
   { href: '/friends', label: 'Friends', Icon: IconFriends },
+  { href: '/profile', label: 'Profile', Icon: IconProfile },
 ];
 
 export function Nav({ session }: NavProps) {
@@ -64,14 +90,14 @@ export function Nav({ session }: NavProps) {
     <>
       {/* Top nav */}
       <nav className="sticky top-0 z-50 h-[52px] bg-black border-b border-white/[0.07] flex items-center px-4 sm:px-6 gap-6 sm:gap-10">
-        {/* Logo */}
+        {/* Logo / Home */}
         <Link href="/" className="text-[14px] font-medium text-white whitespace-nowrap flex-shrink-0 tracking-[0.01em]">
           Chrono <span className="text-gold">Consigliere</span>
         </Link>
 
-        {/* Desktop nav links — hidden on mobile */}
+        {/* Desktop nav links — hidden on mobile (bottom nav handles it) */}
         <div className="hidden md:flex gap-7 flex-1">
-          {NAV_LINKS.map(link => (
+          {DESKTOP_NAV_LINKS.map(link => (
             <Link
               key={link.href}
               href={link.href}
@@ -89,7 +115,7 @@ export function Nav({ session }: NavProps) {
         {/* Spacer on mobile */}
         <div className="flex-1 md:hidden" />
 
-        {/* Right */}
+        {/* Right: avatar + sign out (desktop) */}
         <div className="flex items-center gap-3 sm:gap-4 ml-auto md:ml-0">
           {session?.user ? (
             <>
@@ -120,7 +146,7 @@ export function Nav({ session }: NavProps) {
         </div>
       </nav>
 
-      {/* Mobile bottom nav — hidden on md+ */}
+      {/* Mobile bottom nav — 5 tabs, hidden on md+ */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-black border-t border-white/[0.07]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -136,7 +162,7 @@ export function Nav({ session }: NavProps) {
                   ${active ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
               >
                 <Icon active={active} />
-                <span className={`font-mono text-[8px] tracking-[0.08em] uppercase ${active ? 'text-gold' : ''}`}>
+                <span className={`font-mono text-[8px] tracking-[0.06em] uppercase ${active ? 'text-gold' : ''}`}>
                   {label}
                 </span>
               </Link>

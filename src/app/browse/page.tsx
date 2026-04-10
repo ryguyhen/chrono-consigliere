@@ -2,67 +2,29 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth.config';
 import { getWatches, getFilterOptions } from '@/lib/watches/queries';
+import { parseBrowseFilters, hasActiveFilters, buildPageUrl } from '@/lib/watches/filters';
 import { Suspense } from 'react';
 import { WatchCard } from '@/components/watches/WatchCard';
 import { BrowseFilters } from '@/components/watches/BrowseFilters';
 import { SortSelect } from '@/components/watches/SortSelect';
 import Link from 'next/link';
-import type { BrowseFilters as FiltersType } from '@/types';
 
 interface PageProps {
-  searchParams: {
-    q?: string;
-    brand?: string | string[];
-    style?: string | string[];
-    movement?: string | string[];
-    condition?: string | string[];
-    dealer?: string | string[];
-    minPrice?: string;
-    maxPrice?: string;
-    sort?: string;
-    page?: string;
-  };
-}
-
-function toArray(val: string | string[] | undefined): string[] {
-  if (!val) return [];
-  return Array.isArray(val) ? val : [val];
-}
-
-function pageUrl(filters: FiltersType, targetPage: number): string {
-  const params = Object.fromEntries(
-    Object.entries(filters)
-      .filter(([, v]) => v !== undefined)
-      .map(([k, v]) => [k, String(v)])
-  );
-  return `/browse?${new URLSearchParams({ ...params, page: String(targetPage) })}`;
+  searchParams: Record<string, string | string[] | undefined>;
 }
 
 export default async function BrowsePage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
 
-  const filters: FiltersType = {
-    q: searchParams.q,
-    brand: toArray(searchParams.brand),
-    style: toArray(searchParams.style),
-    movement: toArray(searchParams.movement),
-    condition: toArray(searchParams.condition),
-    dealer: toArray(searchParams.dealer),
-    minPrice: searchParams.minPrice ? parseInt(searchParams.minPrice) : undefined,
-    maxPrice: searchParams.maxPrice ? parseInt(searchParams.maxPrice) : undefined,
-    sort: searchParams.sort as FiltersType['sort'] ?? 'newest',
-    page: searchParams.page ? parseInt(searchParams.page) : 1,
-  };
+  const filters = parseBrowseFilters(searchParams);
 
   const [{ watches, total, hasMore, page }, filterOptions] = await Promise.all([
     getWatches(filters, userId),
     getFilterOptions(),
   ]);
 
-  const hasFilters = (filters.brand?.length ?? 0) + (filters.style?.length ?? 0) +
-    (filters.movement?.length ?? 0) + (filters.condition?.length ?? 0) +
-    (filters.dealer?.length ?? 0) > 0 || filters.q || filters.minPrice || filters.maxPrice;
+  const hasFilters = hasActiveFilters(filters);
 
   return (
     <div className="flex min-h-[calc(100vh-52px)]">
@@ -117,7 +79,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
           <div className="flex justify-center items-center gap-4 py-10 border-t border-[var(--border)]">
             {page > 1 && (
               <Link
-                href={pageUrl(filters, page - 1)}
+                href={buildPageUrl(filters, page - 1)}
                 className="font-mono text-[10px] tracking-[0.1em] uppercase px-4 py-2 border border-[var(--border)] rounded hover:border-gold text-muted hover:text-gold transition-colors"
               >
                 ← Prev
@@ -126,7 +88,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
             <span className="font-mono text-[10px] text-muted">{page}</span>
             {hasMore && (
               <Link
-                href={pageUrl(filters, page + 1)}
+                href={buildPageUrl(filters, page + 1)}
                 className="font-mono text-[10px] tracking-[0.1em] uppercase px-4 py-2 border border-[var(--border)] rounded hover:border-gold text-muted hover:text-gold transition-colors"
               >
                 Next →

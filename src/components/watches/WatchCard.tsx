@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { useState } from 'react';
 import type { WatchWithRelations } from '@/types';
 import { decodeHtmlEntities, formatPrice } from '@/lib/format';
+import { CONDITION_LABEL_SHORT } from '@/lib/watches/display';
+import { saveListing, unsaveListing } from '@/lib/api/client';
 
 interface WatchCardProps {
   watch: WatchWithRelations;
@@ -12,28 +14,20 @@ interface WatchCardProps {
   priority?: boolean;
 }
 
-const CONDITION_LABEL: Record<string, string> = {
-  UNWORN: 'Unworn',
-  MINT: 'Mint',
-  EXCELLENT: 'Excellent',
-  VERY_GOOD: 'V. Good',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-};
-
 export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
   const [saved, setSaved] = useState(watch.isSaved ?? false);
   const isOwned = watch.isOwned ?? false;
   const friendCount = watch.friendLikes?.length ?? 0;
   const displayTitle = decodeHtmlEntities(watch.model || watch.sourceTitle);
 
-  function handleSave(e: React.MouseEvent) {
+  async function handleSave(e: React.MouseEvent) {
     e.preventDefault();
     if (isOwned) return; // owned items are not toggled from the card
     const next = !saved;
     setSaved(next);
     onSave?.(watch.id, next);
-    fetch(`/api/saves/${watch.id}`, { method: next ? 'POST' : 'DELETE' }).catch(() => setSaved(!next));
+    const result = await (next ? saveListing(watch.id) : unsaveListing(watch.id));
+    if (!result.ok) setSaved(!next); // revert on failure
   }
 
   const primaryImage = watch.images?.[0];
@@ -65,7 +59,7 @@ export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/8 transition-colors duration-200" />
 
-        {/* Save / owned button */}
+        {/* Save / owned button — always visible on mobile (44×44 touch target), hover-reveal on desktop */}
         {isOwned ? (
           <div className="absolute top-2.5 right-2.5 font-mono text-[8px] tracking-[0.1em] uppercase px-2 py-0.5 bg-gold text-black rounded-sm font-bold">
             Owned
@@ -89,7 +83,7 @@ export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
         {/* Condition badge */}
         {watch.condition && watch.condition !== 'GOOD' && watch.condition !== 'VERY_GOOD' && (
           <div className="absolute bottom-3 left-3 font-mono text-[8px] tracking-[0.1em] uppercase px-2 py-0.5 bg-black/75 text-white/75 rounded-sm">
-            {CONDITION_LABEL[watch.condition]}
+            {CONDITION_LABEL_SHORT[watch.condition]}
           </div>
         )}
       </div>
