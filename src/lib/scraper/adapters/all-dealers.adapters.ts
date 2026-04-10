@@ -514,6 +514,8 @@ export class CollectorsCornerNYAdapter extends ShopifyBaseAdapter {
       ],
 
       // Layer 3 — title keyword exclusion (last-resort for untagged/untyped items)
+      // Note: 'signage', 'silk scarf', 'key pouch', 'watch winder' are also
+      // covered by DEFAULT_TITLE_EXCLUSIONS in the base adapter.
       excludeTitleTerms: [
         // Straps & accessories
         'watch strap', 'nato strap', 'rubber strap', 'leather strap', 'nylon strap',
@@ -525,6 +527,13 @@ export class CollectorsCornerNYAdapter extends ShopifyBaseAdapter {
         // Additional jewelry categories not covered by tags
         'brooch', 'earring', 'locket', 'pendant',
         'lapel pin', 'tie bar', 'tie clip',
+        // Rolex branded merchandise — confirmed leaking from CCNY catalog
+        'scarf',       // e.g. "Rolex Silk Scarf" (safe at CCNY; globally 'silk scarf' is in DEFAULT)
+        'pouch',       // e.g. "Rolex Italian Leather Key Pouch" (catches any "* pouch" variant)
+        'wallet',      // branded wallets
+        'coronet',     // e.g. "Rolex Yellow Gold Coronet Pin" (coronet = Rolex logo pin)
+        'key ring',    // branded key accessories
+        'umbrella',    // branded merchandise
       ],
 
       rateLimit: 2000,

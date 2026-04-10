@@ -7,14 +7,51 @@ import type { BrowseFilters, PaginatedWatches, WatchWithRelations } from '@/type
 const PAGE_SIZE = 24;
 
 /**
+ * Non-watch title terms blocked from public browse regardless of source.
+ * This is the last line of defence for items that slipped past adapter-level filtering.
+ * Only terms with ~0% chance of appearing in a real watch product title.
+ * Keep conservative — a false positive hides a real watch from every user.
+ */
+const BROWSE_TITLE_BLOCKLIST = [
+  // Retail signage & display items
+  'signage',
+  'display stand',
+  'display case',
+  // Branded textile merchandise
+  'silk scarf',
+  ' scarf',       // space-prefix avoids matching "scarface" watch nicknames
+  // Branded leather goods
+  'key pouch',
+  'key chain',
+  'key ring',
+  // Watch accessories that are not watches
+  'watch winder',
+  // Pins & wearable accessories
+  'coronet pin',
+  'lapel pin',
+  'tie clip',
+  'tie bar',
+  // General merchandise
+  'wallet',
+  'umbrella',
+  'brochure',
+] as const;
+
+/**
  * Base filter applied to ALL public-facing listing queries.
- * Excludes listings from disabled sources, deduplicates, and hides unavailable inventory.
+ * Excludes listings from disabled sources, deduplicates, hides unavailable inventory,
+ * and blocks non-watch items that slipped past adapter-level filtering.
  */
 const PUBLIC_WHERE = {
   isAvailable: true,
   duplicateOf: null,
   source: { isActive: true },
-} as const;
+  NOT: {
+    OR: BROWSE_TITLE_BLOCKLIST.map(term => ({
+      sourceTitle: { contains: term, mode: 'insensitive' as const },
+    })),
+  },
+};
 
 const LISTING_SELECT = {
   id: true,

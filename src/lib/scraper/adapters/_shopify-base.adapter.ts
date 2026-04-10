@@ -80,6 +80,23 @@ const DEFAULT_NON_WATCH_TYPES = [
   'watch strap', 'nato strap', 'leather strap',
 ];
 
+/**
+ * Global title-keyword exclusions applied to ALL Shopify sources.
+ * Only terms that are 0% likely to appear in a legitimate watch product title.
+ * Source-specific terms go in excludeTitleTerms on the adapter config.
+ *
+ * Kept deliberately narrow — overcorrection here hides real watches across
+ * every source. When in doubt, add the term source-specifically instead.
+ */
+const DEFAULT_TITLE_EXCLUSIONS = [
+  'signage',        // dealer/brand display signs
+  'silk scarf',     // branded textile merchandise
+  'key pouch',      // branded leather key accessories
+  'key chain',      // branded key accessories
+  'display stand',  // retail display hardware
+  'watch winder',   // winder units (tag layer catches most; this is title fallback)
+];
+
 export abstract class ShopifyBaseAdapter extends BaseAdapter {
   protected shopifyConfig: ShopifyAdapterConfig;
 
@@ -242,9 +259,12 @@ export abstract class ShopifyBaseAdapter extends BaseAdapter {
       ...(this.shopifyConfig.excludeProductTypes ?? []),
     ].map(t => t.toLowerCase());
 
-    // Source-specific title exclusion terms (substring match, case-insensitive)
-    const excludeTitleTerms = (this.shopifyConfig.excludeTitleTerms ?? [])
-      .map(t => t.toLowerCase());
+    // Title exclusion: global defaults merged with any source-specific terms.
+    // Substring match, case-insensitive. Applied as Layer 3 when non-empty.
+    const excludeTitleTerms = [
+      ...DEFAULT_TITLE_EXCLUSIONS,
+      ...(this.shopifyConfig.excludeTitleTerms ?? []),
+    ].map(t => t.toLowerCase());
 
     // Positive watch indicator — if set, product must match at least one
     const watchIndicatorTags = (this.shopifyConfig.watchIndicatorTags ?? [])
@@ -337,8 +357,8 @@ export abstract class ShopifyBaseAdapter extends BaseAdapter {
             continue;
           }
 
-          // 3. Title keyword exclusion (source-specific, only fires when configured)
-          if (excludeTitleTerms.length > 0) {
+          // 3. Title keyword exclusion — global defaults + source-specific terms
+          {
             const titleLower = product.title.toLowerCase();
             const matchedTerm = excludeTitleTerms.find(term => titleLower.includes(term));
             if (matchedTerm) {
