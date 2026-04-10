@@ -145,95 +145,86 @@ export class WatchnetJapanAdapter extends ShopifyBaseAdapter {
   }
 
   async scrape(): Promise<ScrapeResult> {
+    // Watchnet Japan runs a custom CMS with SSR HTML — no Playwright needed.
+    // Site structure:
+    //   Homepage  /en/              → links to category pages (/en/item/index/N)
+    //   Category  /en/item/index/N → links to product pages  (/en/item/view/N)
+    //   Product   /en/item/view/N  → title, price, og:image
+    //   category 24 = "ARCHIVES (SOLD ITEMS)" — skipped
+
     const listings: ScrapedListing[] = [];
     const errors: string[] = [];
+    const headers = { 'User-Agent': 'Mozilla/5.0 (compatible)', Accept: 'text/html' };
 
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (compatible; ChronoConsigliere/1.0)',
-      locale: 'en-US',
-    });
+    // Step 1: Discover active category IDs from homepage
+    const homeRes = await fetch(`${this.config.baseUrl}/en/`, { headers });
+    const homeHtml = await homeRes.text();
+    const catMatches = [...homeHtml.matchAll(/href="[^"]*\/en\/item\/index\/(\d+)"/g)];
+    const categoryIds = [...new Set(catMatches.map(m => m[1]).filter(id => id !== '24'))];
+    this.log('info', `Found ${categoryIds.length} active categories`);
 
-    try {
-      const page = await context.newPage();
+    // Step 2: Collect unique product view URLs from each category listing
+    const productUrls = new Set<string>();
+    for (const catId of categoryIds) {
+      await this.delay();
+      try {
+        const catRes = await fetch(`${this.config.baseUrl}/en/item/index/${catId}`, { headers });
+        const catHtml = await catRes.text();
+        const viewMatches = [...catHtml.matchAll(/href="(https:\/\/www\.watchnet\.co\.jp\/en\/item\/view\/\d+)"/g)];
+        viewMatches.forEach(m => productUrls.add(m[1]));
+      } catch { /* skip failed category */ }
+    }
+    this.log('info', `Found ${productUrls.size} product URLs`);
 
-      // Watchnet Japan lists watches on the English version
-      // Their site structure: watchnet.co.jp/en/ with individual product pages
-      await this.withRetry(() =>
-        page.goto('https://www.watchnet.co.jp/en/', { waitUntil: 'domcontentloaded', timeout: 30000 })
-      );
+    // Step 3: Scrape each product detail page
+    for (const url of productUrls) {
+      try {
+        await this.delay();
+        const res = await fetch(url, { headers });
+        if (!res.ok) continue;
+        const html = await res.text();
 
-      // Extract all product links from the listing page
-      const productLinks = await page.evaluate(() => {
-        const links: string[] = [];
-        // Product links on their site follow pattern /en/product/XXXXX
-        document.querySelectorAll('a[href*="/en/product/"], a[href*="/en/watch/"]').forEach((a: any) => {
-          if (a.href && !links.includes(a.href)) links.push(a.href);
+        // Title from h1 or og:title
+        const h1Match = html.match(/class="content-itemdetail__ttl"[^>]*>\s*([^<]+)/);
+        const title = h1Match
+          ? h1Match[1].trim()
+          : (html.match(/<meta property="og:title" content="([^"]+)"/)?.[1] ?? '');
+        if (!title) continue;
+
+        // Primary image from og:image
+        const ogImage = html.match(/<meta property="og:image" content="([^"]+)"/)?.[1] ?? null;
+        const images = ogImage ? [{ url: ogImage, isPrimary: true }] : [];
+
+        // Price in JPY (stored as-is; UI can format/convert)
+        const priceMatch = html.match(/<p class="price">&yen;([\d,]+)/);
+        const priceJpy = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+
+        listings.push({
+          sourceUrl: url,
+          sourceTitle: title,
+          sourcePrice: priceJpy ? `¥${priceJpy.toLocaleString()}` : null,
+          brand: null, // inferred by scrape-runner via inferBrand
+          model: title,
+          reference: null,
+          year: null,
+          caseSizeMm: null,
+          caseMaterial: null,
+          dialColor: null,
+          movementType: null,
+          condition: null,
+          style: null,
+          price: priceJpy,
+          currency: 'JPY',
+          description: null,
+          images,
+          isAvailable: true, // only non-archive categories scraped
         });
-        return links;
-      });
-
-      this.log('info', `Found ${productLinks.length} product links`);
-
-      for (const url of productLinks) {
-        try {
-          await this.delay();
-          await this.withRetry(() =>
-            page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 })
-          );
-
-          const listing = await page.evaluate((productUrl: string) => {
-            const title = document.querySelector('h1, .product-title')?.textContent?.trim() ?? '';
-            const priceEl = document.querySelector('.price, .product-price');
-            const sourcePrice = priceEl?.textContent?.replace(/[^0-9,]/g, '').trim() ?? null;
-            const desc = document.querySelector('.description, .product-description')?.textContent?.trim() ?? null;
-
-            const isSold = !!(
-              document.querySelector('.sold-out, .soldout') ||
-              document.body.textContent?.toLowerCase().includes('sold')
-            );
-
-            const images = Array.from(
-              document.querySelectorAll('.product-images img, .gallery img')
-            ).map((img: any, i) => ({
-              url: img.src ?? img.dataset.src ?? '',
-              isPrimary: i === 0,
-            })).filter(img => img.url);
-
-            // Parse JPY price and convert hint (we store in JPY, flag currency)
-            const jpyMatch = sourcePrice?.replace(',', '');
-            const priceJpy = jpyMatch ? parseInt(jpyMatch) : null;
-
-            return {
-              sourceUrl: productUrl,
-              sourceTitle: title,
-              sourcePrice: priceJpy ? `¥${priceJpy.toLocaleString()}` : null,
-              price: priceJpy ? Math.round(priceJpy * 0.0067 * 100) : null, // rough JPY→USD, cents
-              currency: 'JPY',
-              description: desc,
-              images,
-              isAvailable: !isSold,
-              brand: null, model: null, reference: null, year: null,
-              caseSizeMm: null, caseMaterial: null, dialColor: null,
-              movementType: null, condition: null, style: null,
-            };
-          }, url);
-
-          // Enrich parsed fields from title+description
-          const parsed = this.parseFromTitleAndDescription(
-            listing.sourceTitle,
-            listing.description
-          );
-
-          listings.push({ ...listing, ...parsed });
-        } catch (err: any) {
-          errors.push(`${url}: ${err.message}`);
-        }
+      } catch (err: any) {
+        errors.push(`${url}: ${err.message}`);
       }
-    } finally {
-      await browser.close();
     }
 
+    this.log('info', `Done. ${listings.length} listings, ${errors.length} errors`);
     return { listings, totalFound: listings.length, errors };
   }
 }
@@ -559,15 +550,123 @@ export class GreyAndPatinaAdapter extends WooCommerceBaseAdapter {
 //     Note: French vintage dealer, possibly French-language site
 // ─────────────────────────────────────────────────────────────
 export class TheArrowOfTimeAdapter extends WooCommerceBaseAdapter {
+  // The Arrow of Time runs on Wix (not WooCommerce).
+  // The WooCommerce Store API call will always fail; we override scrape()
+  // entirely with a fetch-based approach using Wix's SSR HTML + JSON-LD.
+  //
+  // Site structure:
+  //   Shop listing  https://www.thearrowoftime.fr/shop?page=N
+  //   Product page  https://www.thearrowoftime.fr/product-page/[slug]
+  //   Each product page embeds a schema.org Product JSON-LD block with
+  //   name, image array, and Offers (price, currency, availability).
+
   constructor() {
     super({
       sourceId: '',
       sourceName: 'The Arrow of Time',
-      baseUrl: 'https://thearrowoftime.fr',
-      shopPath: '/shop/',
+      baseUrl: 'https://www.thearrowoftime.fr',
+      shopPath: '/shop',
       locale: 'fr',
       rateLimit: 2500,
     });
+  }
+
+  async scrape(): Promise<ScrapeResult> {
+    const listings: ScrapedListing[] = [];
+    const errors: string[] = [];
+    const seenUrls = new Set<string>();
+    const productUrls: string[] = [];
+    const baseUrl = 'https://www.thearrowoftime.fr';
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      Accept: 'text/html,application/xhtml+xml',
+    };
+
+    // Step 1: Paginate through shop listing pages to collect product URLs
+    let page = 1;
+    while (page <= (this.config.maxPages ?? 20)) {
+      const listUrl = `${baseUrl}/shop?page=${page}`;
+      const res = await fetch(listUrl, { headers });
+      if (!res.ok) break;
+      const html = await res.text();
+
+      // Each product appears twice (thumbnail + title link) — dedupe with Set
+      const matches = [...html.matchAll(/href="(https:\/\/www\.thearrowoftime\.fr\/product-page\/[^"]+)"/g)];
+      const pageUrls = [...new Set(matches.map(m => m[1]))];
+      if (pageUrls.length === 0) break;
+
+      let newOnPage = 0;
+      for (const u of pageUrls) {
+        if (!seenUrls.has(u)) { seenUrls.add(u); productUrls.push(u); newOnPage++; }
+      }
+      if (newOnPage === 0) break;
+
+      // Wix renders a "?page=N+1" link when a next page exists
+      if (!html.includes(`?page=${page + 1}`)) break;
+      page++;
+      await this.delay();
+    }
+
+    this.log('info', `Found ${productUrls.length} product URLs across ${page} page(s)`);
+
+    // Step 2: Fetch each product page and parse JSON-LD
+    for (const productUrl of productUrls) {
+      try {
+        await this.delay();
+        const res = await fetch(productUrl, { headers });
+        if (!res.ok) { errors.push(`HTTP ${res.status}: ${productUrl}`); continue; }
+        const html = await res.text();
+
+        // Wix embeds a schema.org Product block in every product page
+        const ldMatch = html.match(/<script type="application\/ld\+json">(\{[^<]*"Product"[^<]*\})<\/script>/);
+        if (!ldMatch) continue;
+
+        let ld: any;
+        try { ld = JSON.parse(ldMatch[1]); } catch { continue; }
+        if (ld['@type'] !== 'Product') continue;
+
+        const name = (ld.name as string | undefined) ?? '';
+        if (!name) continue;
+
+        const offer = (ld.Offers ?? ld.offers ?? {}) as Record<string, any>;
+        const rawPrice = parseFloat(offer.price ?? '0');
+        const price = rawPrice > 0 ? rawPrice : null;
+        const currency = (offer.priceCurrency as string | undefined) ?? 'EUR';
+        const availability = (offer.Availability ?? offer.availability ?? '') as string;
+        const isAvailable = availability.toLowerCase().includes('instock');
+
+        const images = ((ld.image ?? []) as any[]).map((img: any, i: number) => ({
+          url: (img.contentUrl ?? img) as string,
+          isPrimary: i === 0,
+        }));
+
+        listings.push({
+          sourceUrl: productUrl,
+          sourceTitle: name,
+          sourcePrice: price ? `€${price.toFixed(0)}` : null,
+          brand: null, // inferred by scrape-runner via inferBrand
+          model: name,
+          reference: null,
+          year: null,
+          caseSizeMm: null,
+          caseMaterial: null,
+          dialColor: null,
+          movementType: null,
+          condition: null,
+          style: null,
+          price,
+          currency,
+          description: null,
+          images,
+          isAvailable,
+        });
+      } catch (err: any) {
+        errors.push(`${productUrl}: ${err.message}`);
+      }
+    }
+
+    this.log('info', `Done. ${listings.length} listings, ${errors.length} errors`);
+    return { listings, totalFound: listings.length, errors };
   }
 }
 
