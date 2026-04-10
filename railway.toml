@@ -1,3 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+# dockerfilePath is intentionally omitted — each service sets its own
+# Dockerfile path in the Railway UI:
+#   web service     → Dockerfile
+#   scraper service → Dockerfile.scraper
