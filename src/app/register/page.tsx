@@ -1,11 +1,27 @@
 // src/app/register/page.tsx
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function RegisterPage() {
+const ACTION_CONTEXT: Record<string, string> = {
+  save: 'Create an account to save watches to your Roll.',
+  owned: 'Create an account to track watches you own.',
+};
+
+function RegisterForm() {
   const router = useRouter();
+  const params = useSearchParams();
+
+  const from = params.get('from') ?? '/';
+  const action = params.get('action') ?? '';
+  const actionContext = ACTION_CONTEXT[action] ?? null;
+
+  // After registration, sign-in link preserves return context
+  const loginHref = from && from !== '/'
+    ? `/login?from=${encodeURIComponent(from)}${action ? `&action=${action}` : ''}`
+    : '/login';
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,9 +60,13 @@ export default function RegisterPage() {
           <div className="text-[18px] font-semibold tracking-[-0.01em] mb-1">
             Chrono <span className="text-gold">Consigliere</span>
           </div>
-          <p className="font-mono text-[9px] tracking-[0.18em] text-muted uppercase">
-            Start your roll
-          </p>
+          {actionContext ? (
+            <p className="text-[12px] text-ink/70 leading-snug mt-2">{actionContext}</p>
+          ) : (
+            <p className="font-mono text-[9px] tracking-[0.18em] text-muted uppercase">
+              Start your roll
+            </p>
+          )}
         </div>
 
         {done ? (
@@ -54,10 +74,10 @@ export default function RegisterPage() {
             <div className="text-[1.5rem] mb-3 text-gold">◈</div>
             <div className="text-[1.1rem] font-semibold mb-2">You&apos;re in.</div>
             <p className="text-[13px] text-muted mb-6 leading-relaxed">
-              Account created. Sign in with your email and password.
+              Account created. Sign in to continue.
             </p>
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => router.push(loginHref)}
               className="w-full bg-gold text-black text-[11px] font-bold tracking-[0.1em] uppercase py-3 rounded hover:bg-gold-dark transition-colors"
             >
               Sign in
@@ -116,7 +136,7 @@ export default function RegisterPage() {
                 <div>{error}</div>
                 {errorCode === 'EMAIL_TAKEN' && (
                   <div className="text-muted">
-                    <Link href="/login" className="text-gold hover:text-gold-dark">Sign in instead →</Link>
+                    <Link href={loginHref} className="text-gold hover:text-gold-dark">Sign in instead →</Link>
                   </div>
                 )}
                 {errorCode === 'LEGACY_ACCOUNT' && (
@@ -142,7 +162,7 @@ export default function RegisterPage() {
 
             <p className="text-center text-[12px] text-muted pt-1">
               Already have an account?{' '}
-              <Link href="/login" className="text-gold hover:text-gold-dark">
+              <Link href={loginHref} className="text-gold hover:text-gold-dark">
                 Sign in
               </Link>
             </p>
@@ -150,5 +170,13 @@ export default function RegisterPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter, usePathname } from 'next/navigation';
 import type { WatchWithRelations } from '@/types';
 import { decodeHtmlEntities, formatPrice } from '@/lib/format';
 import { CONDITION_LABEL_SHORT } from '@/lib/watches/display';
@@ -19,10 +21,17 @@ export function WatchCard({ watch, onSave, priority = false }: WatchCardProps) {
   const isOwned = watch.isOwned ?? false;
   const friendCount = watch.friendLikes?.length ?? 0;
   const displayTitle = decodeHtmlEntities(watch.model || watch.sourceTitle);
+  const { status } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
 
   async function handleSave(e: React.MouseEvent) {
     e.preventDefault();
-    if (isOwned) return; // owned items are not toggled from the card
+    if (isOwned) return;
+    if (status === 'unauthenticated') {
+      router.push(`/login?from=${encodeURIComponent(pathname)}&action=save`);
+      return;
+    }
     const next = !saved;
     setSaved(next);
     onSave?.(watch.id, next);

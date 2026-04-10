@@ -27,10 +27,24 @@ function oauthErrorMessage(code: string | null): string | null {
   }
 }
 
+const ACTION_CONTEXT: Record<string, string> = {
+  save: 'Create an account to save watches to your Roll.',
+  owned: 'Create an account to track watches you own.',
+};
+
 function LoginForm() {
   const { data: session } = useSession();
   const router = useRouter();
   const params = useSearchParams();
+
+  const from = params.get('from') ?? '/';
+  const action = params.get('action') ?? '';
+  const actionContext = ACTION_CONTEXT[action] ?? null;
+
+  // Build register link preserving return context
+  const registerHref = from && from !== '/'
+    ? `/register?from=${encodeURIComponent(from)}${action ? `&action=${action}` : ''}`
+    : '/register';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,8 +54,8 @@ function LoginForm() {
   const [showRecoveryHint, setShowRecoveryHint] = useState(false);
 
   useEffect(() => {
-    if (session) router.push('/');
-  }, [session, router]);
+    if (session) router.push(from);
+  }, [session, router, from]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,7 +72,7 @@ function LoginForm() {
       // not on initial load from a URL ?error= param.
       setShowRecoveryHint(true);
     } else {
-      router.push('/');
+      router.push(from);
     }
   }
 
@@ -69,9 +83,13 @@ function LoginForm() {
           <div className="text-[18px] font-semibold tracking-[-0.01em] mb-1">
             Chrono <span className="text-gold">Consigliere</span>
           </div>
-          <p className="font-mono text-[9px] tracking-[0.18em] text-muted uppercase">
-            See what your friends are into.
-          </p>
+          {actionContext ? (
+            <p className="text-[12px] text-ink/70 leading-snug mt-2">{actionContext}</p>
+          ) : (
+            <p className="font-mono text-[9px] tracking-[0.18em] text-muted uppercase">
+              See what your friends are into.
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -140,7 +158,7 @@ function LoginForm() {
         </div>
 
         <button
-          onClick={() => signIn('google', { callbackUrl: '/' })}
+          onClick={() => signIn('google', { callbackUrl: from })}
           className="w-full py-2.5 border border-[var(--border)] rounded text-[12px] text-ink/70 hover:border-gold/50 hover:text-gold transition-colors"
         >
           Continue with Google
@@ -149,7 +167,7 @@ function LoginForm() {
         <div className="text-center mt-5 space-y-1.5">
           <div className="text-[12px] text-muted">
             New here?{' '}
-            <Link href="/register" className="text-gold hover:text-gold-dark">
+            <Link href={registerHref} className="text-gold hover:text-gold-dark">
               Start your roll
             </Link>
           </div>

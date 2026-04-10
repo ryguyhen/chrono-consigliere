@@ -3,6 +3,8 @@
 // Single state prevents the two actions going out of sync.
 // "Save" is the primary action (~90% of use); "Owned" is a secondary record.
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter, usePathname } from 'next/navigation';
 
 type ListState = 'none' | 'favorites' | 'owned';
 type LoadingTarget = 'favorites' | 'owned' | null;
@@ -15,8 +17,15 @@ interface Props {
 export function WatchRollActions({ watchId, initialState }: Props) {
   const [state, setState] = useState<ListState>(initialState);
   const [loadingTarget, setLoadingTarget] = useState<LoadingTarget>(null);
+  const { status } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
 
   async function setList(target: 'favorites' | 'owned') {
+    if (status === 'unauthenticated') {
+      router.push(`/login?from=${encodeURIComponent(pathname)}&action=${target === 'owned' ? 'owned' : 'save'}`);
+      return;
+    }
     setLoadingTarget(target);
     const isRemoving = state === target;
     if (isRemoving) {
