@@ -478,6 +478,11 @@ export class GoodEveningAdapter extends SquarespaceBaseAdapter {
 // ─────────────────────────────────────────────────────────────
 // 10. COLLECTORS CORNER NY [Shopify] — New York
 //     URL: collectorscornerny.com
+//
+//     CCNY is a mixed-inventory NY vintage dealer — carries watches,
+//     jewelry, accessories, and collectibles. No watch-specific collection
+//     exists, so we must exclude non-watch categories by type/tag/title.
+//     Layers 1–3 only (no positive gate — watches lack a consistent type).
 // ─────────────────────────────────────────────────────────────
 export class CollectorsCornerNYAdapter extends ShopifyBaseAdapter {
   constructor() {
@@ -486,25 +491,42 @@ export class CollectorsCornerNYAdapter extends ShopifyBaseAdapter {
       sourceName: 'Collectors Corner NY',
       baseUrl: 'https://www.collectorscornerny.com',
       watchCollectionHandle: 'all',
+
+      // Layer 1 — product_type exclusion
+      excludeProductTypes: [
+        'jewelry', 'jewellery', 'fine jewelry', 'fashion jewelry',
+        'watch strap', 'strap', 'watch winder', 'winder',
+        'ring', 'rings', 'brooch', 'pin',
+        'earring', 'earrings',
+        'cufflinks', 'cuff links',
+        'lapel pin', 'tie bar', 'tie clip',
+      ],
+
+      // Layer 2 — tag exclusion
       nonWatchTags: [
         'parts',
         'jewelry', 'jewellery', 'fine jewelry',
-        'necklace', 'cufflinks', 'pendant',
+        'necklace', 'cufflinks', 'pendant', 'locket',
         'glasses', 'sunglasses', 'eyewear',
+        'brooch', 'earring', 'earrings',
+        'ring', 'rings',
+        'tie bar', 'tie clip', 'lapel pin',
       ],
-      excludeProductTypes: [
-        'jewelry', 'jewellery',
-        'fine jewelry', 'fashion jewelry',
-        'watch strap', 'strap',
-        'watch winder', 'winder',
-      ],
+
+      // Layer 3 — title keyword exclusion (last-resort for untagged/untyped items)
       excludeTitleTerms: [
+        // Straps & accessories
         'watch strap', 'nato strap', 'rubber strap', 'leather strap', 'nylon strap',
         'watch winder', 'winder',
+        // Jewelry (English)
         'jewelry', 'jewellery',
-        'necklace', 'cufflinks',
+        'necklace', 'cufflinks', 'cuff link',
         'sunglasses', 'glasses',
+        // Additional jewelry categories not covered by tags
+        'brooch', 'earring', 'locket', 'pendant',
+        'lapel pin', 'tie bar', 'tie clip',
       ],
+
       rateLimit: 2000,
     });
   }
@@ -529,8 +551,9 @@ export class MentaWatchesAdapter extends WooCommerceBaseAdapter {
 // ─────────────────────────────────────────────────────────────
 // 12. FRANÇOISE PARIS [Shopify] — Paris, France
 //     URL: francoise.paris
-//     Platform: Shopify (Dawn 5.0.0 theme) — was misidentified as WooCommerce
-//     Note: Sells watches + jewellery; filter to watches only
+//     Platform: Shopify (Dawn 5.0.0 theme)
+//     Note: Mixed jewelry + watch dealer — filter to watches only.
+//     Uses French product_type/tag taxonomy — French terms required.
 // ─────────────────────────────────────────────────────────────
 export class FrancoisePavisAdapter extends ShopifyBaseAdapter {
   constructor() {
@@ -539,8 +562,29 @@ export class FrancoisePavisAdapter extends ShopifyBaseAdapter {
       sourceName: 'Françoise Paris',
       baseUrl: 'https://francoise.paris',
       watchCollectionHandle: undefined, // use root products.json — no watch-only collection
-      excludeProductTypes: ['bracelet', 'ring', 'necklace', 'jewellery', 'jewelry', 'bague', 'collier', 'bijou'],
-      nonWatchTags: ['bijoux', 'jewelry', 'jewellery', 'ring', 'bague', 'bracelet-bijou', 'necklace'],
+
+      // Layer 1 — product_type exclusion (English + French)
+      excludeProductTypes: [
+        'bracelet', 'ring', 'necklace', 'jewellery', 'jewelry',
+        'bague', 'collier', 'bijou',
+        // French jewelry types not previously covered
+        'pendentif', 'broche', 'boucle',
+      ],
+
+      // Layer 2 — tag exclusion (English + French)
+      nonWatchTags: [
+        'bijoux', 'jewelry', 'jewellery',
+        'ring', 'bague', 'bracelet-bijou', 'necklace',
+        // French jewelry categories not previously covered
+        'pendentif', 'broche', 'boucle',
+      ],
+
+      // Layer 3 — title keyword exclusion (French terms that slip through tags)
+      excludeTitleTerms: [
+        'pendentif', 'broche', 'boucle', 'collier', 'bague',
+        'bijou', 'bijoux',
+      ],
+
       rateLimit: 2500,
     });
   }
@@ -712,6 +756,9 @@ export class HighEndTimeAdapter extends ShopifyBaseAdapter {
 // ─────────────────────────────────────────────────────────────
 // 16. EMPIRE TIME NY [Shopify] — New York
 //     URL: empiretimeny.com
+//     Focus: Pre-owned watches, primarily Rolex and luxury brands
+//     Uses 'all' collection — add exclusions defensively since some
+//     NY dealers carry straps, boxes, and accessories alongside watches.
 // ─────────────────────────────────────────────────────────────
 export class EmpireTimeNYAdapter extends ShopifyBaseAdapter {
   constructor() {
@@ -720,7 +767,12 @@ export class EmpireTimeNYAdapter extends ShopifyBaseAdapter {
       sourceName: 'Empire Time NY',
       baseUrl: 'https://www.empiretimeny.com',
       watchCollectionHandle: 'all',
-      nonWatchTags: ['strap', 'accessory'],
+      nonWatchTags: ['strap', 'accessory', 'box', 'watchbox', 'watch-box', 'paper', 'parts'],
+      excludeProductTypes: ['strap', 'accessory', 'box', 'watchbox'],
+      excludeTitleTerms: [
+        'watch strap', 'nato strap', 'rubber strap',
+        'watch box', 'watch winder', 'winder',
+      ],
       rateLimit: 2000,
     });
   }
@@ -833,11 +885,14 @@ export class BulangAndSonsAdapter extends ShopifyBaseAdapter {
 //       (Shopify's canonical brand/maker field). inferBrand() cannot help.
 //     • All prices are 0.00 — ACM is Price on Request (POR) only.
 //       price will be null after parsePrice(); sourcePrice likewise null.
-//     • `available: true` with `inventory_management: null` = in stock.
 //     • product_type is consistently "Watch" across the catalog.
 //
-//     Filtering: product_type "Watch" positive gate is sufficient.
-//     The all-watches collection is already watch-only.
+//     Availability note:
+//     ACM maintains an extensive sold archive on their site. Archived/sold
+//     watches typically carry a 'sold' or 'sold-archive' tag. When present,
+//     the tag exclusion below catches them at scrape time, preventing sold
+//     archive watches from appearing in Browse as "Price on request."
+//     If ACM changes their tagging convention, re-verify with debug mode.
 // ─────────────────────────────────────────────────────────────
 export class ACollectedManAdapter extends ShopifyBaseAdapter {
   constructor() {
@@ -846,8 +901,11 @@ export class ACollectedManAdapter extends ShopifyBaseAdapter {
       sourceName: 'A Collected Man',
       baseUrl: 'https://www.acollectedman.com',
       watchCollectionHandle: 'all-watches',
-      // All items in this collection are watches — positive gate enforces it cleanly.
+      // Positive gate: product_type must be "Watch" (consistent across ACM catalog)
       watchIndicatorTypes: ['watch'],
+      // Exclude sold/archive watches — ACM tags these to distinguish from current inventory.
+      // 'sold' alone is intentionally included: a for-sale watch would never be tagged 'sold'.
+      nonWatchTags: ['sold', 'sold-archive', 'archive'],
       rateLimit: 1500,
     });
   }
