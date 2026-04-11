@@ -24,8 +24,10 @@ const BROWSE_TITLE_BLOCKLIST = [
   'key pouch',
   'key chain',
   'key ring',
-  // Watch accessories that are not watches
+  // Watch accessories / bracelets / straps that are not watches
   'watch winder',
+  'bracelet',       // metal/leather bracelets — "bracelet" never appears in a real watch product title
+  ' strap',         // space-prefix avoids "bootstrap" — catches "nato strap", "rubber strap", etc.
   // Pins & wearable accessories
   'coronet pin',
   'lapel pin',
@@ -186,7 +188,16 @@ export async function getWatchById(
   userId?: string
 ): Promise<WatchWithRelations | null> {
   const watch = await prisma.watchListing.findFirst({
-    where: { id, duplicateOf: null, source: { isActive: true } },
+    where: {
+      id,
+      duplicateOf: null,
+      source: { isActive: true },
+      NOT: {
+        OR: BROWSE_TITLE_BLOCKLIST.map(term => ({
+          sourceTitle: { contains: term, mode: 'insensitive' as const },
+        })),
+      },
+    },
     select: {
       ...LISTING_SELECT,
       images: {

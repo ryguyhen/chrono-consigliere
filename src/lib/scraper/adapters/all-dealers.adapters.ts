@@ -144,6 +144,27 @@ export class WatchnetJapanAdapter extends ShopifyBaseAdapter {
     });
   }
 
+  // Title terms that identify non-watch accessories on this site.
+  // Applied after title extraction — any match skips the listing.
+  // Keep conservative: only terms that cannot appear in a real watch product title.
+  private static readonly TITLE_EXCLUSIONS = [
+    'bracelet',
+    'bracelets',
+    'watch strap',
+    'nato strap',
+    'rubber strap',
+    'leather strap',
+    'nylon strap',
+    'watch band',
+    'watch bands',
+    'buckle',
+    'clasp',
+    'watch winder',
+    'winder',
+    'parts',
+    'spare parts',
+  ] as const;
+
   async scrape(): Promise<ScrapeResult> {
     // Watchnet Japan runs a custom CMS with SSR HTML — no Playwright needed.
     // Site structure:
@@ -190,6 +211,14 @@ export class WatchnetJapanAdapter extends ShopifyBaseAdapter {
           ? h1Match[1].trim()
           : (html.match(/<meta property="og:title" content="([^"]+)"/)?.[1] ?? '');
         if (!title) continue;
+
+        // Title-keyword exclusion — skip obvious non-watch accessories
+        const titleLower = title.toLowerCase();
+        const blockedTerm = WatchnetJapanAdapter.TITLE_EXCLUSIONS.find(term => titleLower.includes(term));
+        if (blockedTerm) {
+          this.log('debug', `Dropped non-watch (title:"${blockedTerm}"): ${url}`);
+          continue;
+        }
 
         // Primary image from og:image
         const ogImage = html.match(/<meta property="og:image" content="([^"]+)"/)?.[1] ?? null;
