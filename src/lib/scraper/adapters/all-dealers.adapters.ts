@@ -216,7 +216,7 @@ export class WatchnetJapanAdapter extends ShopifyBaseAdapter {
         const titleLower = title.toLowerCase();
         const blockedTerm = WatchnetJapanAdapter.TITLE_EXCLUSIONS.find(term => titleLower.includes(term));
         if (blockedTerm) {
-          this.log('debug', `Dropped non-watch (title:"${blockedTerm}"): ${url}`);
+          this.log('info', `Dropped non-watch (title:"${blockedTerm}"): ${url}`);
           continue;
         }
 
