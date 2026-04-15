@@ -36,6 +36,9 @@ model User {
   followers     Follow[] @relation("following")
   feedEvents    ActivityFeedEvent[] @relation("actor")
   receivedEvents ActivityFeedEvent[] @relation("target")
+
+  mobileRefreshTokens MobileRefreshToken[]
+  devicePushTokens    DevicePushToken[]
 }
 
 model Account {
@@ -382,4 +385,32 @@ enum LogLevel {
   INFO
   WARN
   ERROR
+}
+
+// ─── MOBILE AUTH ──────────────────────────────────────────────────────────────
+
+model MobileRefreshToken {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique   // SHA-256 hash of the opaque refresh token
+  deviceLabel  String?            // e.g. "Ryan's iPhone" — for future session management
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model DevicePushToken {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique   // Expo push token
+  platform     String   @default("ios")  // ios | android
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
