@@ -21,6 +21,8 @@ import { SquarespaceBaseAdapter } from './_squarespace-base.adapter';
 import { BaseAdapter } from '../base-adapter';
 import { chromium } from 'playwright';
 import type { ScrapeResult, ScrapedListing } from '../base-adapter';
+import { inferBrand } from '../brand-inference';
+import { decodeHtmlEntities } from '@/lib/format';
 
 // ─────────────────────────────────────────────────────────────
 // 1. CRAFT & TAILORED [Shopify] — Los Angeles, CA
@@ -321,8 +323,391 @@ export class WatchnetJapanAdapter extends ShopifyBaseAdapter {
   }
 }
 
+type CyclopeCatalogProduct = {
+  name?: string;
+  price?: number;
+  formattedPrice?: string;
+  currency?: string;
+  urlPart?: string;
+  isInStock?: boolean;
+  inventory?: { status?: string | null };
+  media?: Array<{ fullUrl?: string; url?: string; altText?: string | null }>;
+};
+
+type CyclopeDetailProduct = {
+  name?: string;
+  description?: string;
+  brand?: string;
+  urlPart?: string;
+  formattedPrice?: string;
+  price?: number;
+  currency?: string;
+  isInStock?: boolean;
+  inventory?: { status?: string | null };
+  media?: Array<{ fullUrl?: string; url?: string; altText?: string | null }>;
+  additionalInfo?: Array<{ title?: string; description?: string }>;
+};
+
 // ─────────────────────────────────────────────────────────────
-// 4. ANALOG/SHIFT [Shopify] — New York, NY
+// 4. CYCLOPE WATCHES [Wix / SSR HTML + embedded JSON] — Paris
+//    Site: cyclopewatches.com
+//    Strategy:
+//      1. Homepage HTML exposes at least one live product slug
+//      2. Product page embeds Wix warmup-data with the full catalog
+//      3. Each product detail page embeds structured specs in the same payload
+//    No Playwright needed.
+// ─────────────────────────────────────────────────────────────
+export class CyclopeWatchesAdapter extends BaseAdapter {
+  private static readonly USER_AGENT =
+    'Mozilla/5.0 (compatible; ChronoConsigliereBot/1.0; +https://chrono-consigliere-production.up.railway.app)';
+
+  private static readonly NON_WATCH_TITLE_TERMS = [
+    'strap',
+    'straps',
+    'bracelet',
+    'bracelets',
+    'buckle',
+    'buckles',
+    'parts',
+    'part',
+    'accessory',
+    'accessories',
+    'merch',
+    'book',
+    'gift card',
+    'watch roll',
+    'watch rolls',
+    'travel roll',
+    'pouch',
+    'pouches',
+  ] as const;
+
+  constructor() {
+    super({
+      sourceId: '',
+      sourceName: 'Cyclope Watches',
+      baseUrl: 'https://www.cyclopewatches.com',
+      rateLimit: 1200,
+    });
+  }
+
+  async scrape(): Promise<ScrapeResult> {
+    const listings: ScrapedListing[] = [];
+    const errors: string[] = [];
+    let nonWatchFiltered = 0;
+    let unavailableFiltered = 0;
+
+    try {
+      const homeHtml = await this.fetchHtml('/');
+      const seedSlug = this.findSeedSlug(homeHtml);
+      if (!seedSlug) throw new Error('No available Cyclope product slug found on homepage');
+
+      const catalogHtml = await this.fetchHtml(`/product-page/${seedSlug}`);
+      const catalogProducts = this.extractCatalogProductsFromHtml(catalogHtml);
+      if (catalogProducts.length === 0) throw new Error('Cyclope catalog payload missing products array');
+
+      for (const product of catalogProducts) {
+        const title = decodeHtmlEntities((product.name ?? '').trim());
+        const slug = product.urlPart?.trim();
+        if (!title || !slug) continue;
+
+        if (this.isClearlyNonWatch(title)) {
+          nonWatchFiltered++;
+          continue;
+        }
+
+        if (!this.isCatalogProductAvailable(product)) {
+          unavailableFiltered++;
+          continue;
+        }
+
+        try {
+          await this.delay();
+          const detailHtml = await this.fetchHtml(`/product-page/${slug}`);
+          const detailProduct = this.extractDetailedProductFromHtml(detailHtml, slug);
+          if (!detailProduct) {
+            errors.push(`Missing detail payload for ${slug}`);
+            continue;
+          }
+
+          listings.push(this.normalizeDetailedProduct(detailProduct, slug));
+        } catch (err: any) {
+          errors.push(`${slug}: ${err.message}`);
+        }
+      }
+
+      return {
+        listings,
+        totalFound: listings.length,
+        errors,
+        diagnostics: {
+          strategy: 'HTTP HTML + Wix warmup-data JSON',
+          endpointUsed: `${this.config.baseUrl}/product-page/:slug`,
+          seedSlug,
+          rawTotal: catalogProducts.length,
+          pagesScraped: listings.length + 2,
+          nonWatchFiltered,
+          unavailableFiltered,
+        },
+      };
+    } catch (err: any) {
+      errors.push(err.message);
+      return {
+        listings,
+        totalFound: 0,
+        errors,
+        diagnostics: {
+          strategy: 'HTTP HTML + Wix warmup-data JSON',
+          endpointUsed: `${this.config.baseUrl}/product-page/:slug`,
+          nonWatchFiltered,
+          unavailableFiltered,
+        },
+      };
+    }
+  }
+
+  private async fetchHtml(path: string): Promise<string> {
+    const url = new URL(path, this.config.baseUrl).toString();
+    const res = await this.withRetry(() =>
+      fetch(url, {
+        headers: {
+          'User-Agent': CyclopeWatchesAdapter.USER_AGENT,
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      }),
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    return await res.text();
+  }
+
+  private findSeedSlug(html: string): string | null {
+    const hrefMatch = html.match(/href="https:\/\/www\.cyclopewatches\.com\/product-page\/([^"#?]+)"/i);
+    return hrefMatch?.[1]?.trim() || null;
+  }
+
+  private extractCatalogProductsFromHtml(html: string): CyclopeCatalogProduct[] {
+    const marker = '"productsWithMetaData":{"list":[';
+    const end = html.indexOf('"allProductsCategoryId"');
+    const start = end === -1 ? html.indexOf(marker) : html.lastIndexOf(marker, end);
+    if (start === -1) return [];
+
+    const arrayStart = start + marker.length - 1;
+    const arrayJson = this.extractBalanced(html, arrayStart, '[', ']');
+    if (!arrayJson) return [];
+
+    try {
+      const parsed = JSON.parse(arrayJson);
+      return Array.isArray(parsed)
+        ? parsed.filter((product: any) =>
+          product && typeof product === 'object' && typeof product.urlPart === 'string' && typeof product.name === 'string',
+        )
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private extractDetailedProductFromHtml(html: string, slug: string): CyclopeDetailProduct | null {
+    const marker = `"productPage_EUR_${slug}":{"catalog":{"product":`;
+    const start = html.indexOf(marker);
+    if (start === -1) return null;
+
+    const objectStart = start + marker.length;
+    const objectJson = this.extractBalanced(html, objectStart, '{', '}');
+    if (!objectJson) return null;
+
+    try {
+      return JSON.parse(objectJson);
+    } catch {
+      return null;
+    }
+  }
+
+  private extractBalanced(
+    input: string,
+    startIndex: number,
+    openChar: '{' | '[',
+    closeChar: '}' | ']',
+  ): string | null {
+    if (input[startIndex] !== openChar) return null;
+
+    let depth = 0;
+    let inString = false;
+    let escaping = false;
+
+    for (let i = startIndex; i < input.length; i++) {
+      const char = input[i];
+
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaping = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (char === openChar) depth++;
+      else if (char === closeChar) depth--;
+
+      if (depth === 0) return input.slice(startIndex, i + 1);
+    }
+
+    return null;
+  }
+
+  private isCatalogProductAvailable(product: CyclopeCatalogProduct): boolean {
+    const status = product.inventory?.status?.toLowerCase() ?? '';
+    return product.isInStock === true || status === 'in_stock';
+  }
+
+  private isClearlyNonWatch(title: string): boolean {
+    const lower = title.toLowerCase();
+    return CyclopeWatchesAdapter.NON_WATCH_TITLE_TERMS.some(term => lower.includes(term));
+  }
+
+  private normalizeDetailedProduct(product: CyclopeDetailProduct, slug: string): ScrapedListing {
+    const sourceTitle = decodeHtmlEntities((product.name ?? slug).trim());
+    const description = this.cleanHtml(product.description ?? null);
+    const specs = this.parseSpecs(product.additionalInfo ?? []);
+
+    const brandFromTitle = inferBrand(sourceTitle, description ?? undefined);
+    const rawBrand = specs.brand || product.brand || brandFromTitle?.brand || null;
+    const brand = rawBrand ? this.toTitleCase(rawBrand) : null;
+    const reference = specs.reference || null;
+    const priceRaw = typeof product.price === 'number' && product.price > 0
+      ? `${product.price}`
+      : (product.formattedPrice && !/€0(?:[.,]00)?/.test(product.formattedPrice) ? product.formattedPrice : null);
+    const images = (product.media ?? [])
+      .map((image, index) => ({
+        url: image.fullUrl || image.url || '',
+        isPrimary: index === 0,
+      }))
+      .filter(image => !!image.url);
+
+    return {
+      sourceUrl: `${this.config.baseUrl}/product-page/${slug}`,
+      sourceTitle,
+      sourcePrice: priceRaw ? decodeHtmlEntities(priceRaw) : null,
+      brand,
+      model: this.extractModel(sourceTitle, brand || brandFromTitle?.matched),
+      reference,
+      year: this.extractYear(specs.period, sourceTitle, description),
+      caseSizeMm: this.parseCaseMm(specs.caseSize ?? null),
+      caseMaterial: specs.case || null,
+      dialColor: specs.dial || null,
+      movementType: this.normalizeMovement(specs.movement ?? null),
+      condition: this.normalizeCondition(specs.condition ?? null),
+      style: null,
+      price: this.parsePrice(priceRaw),
+      currency: product.currency || 'EUR',
+      description,
+      images,
+      isAvailable: true,
+    };
+  }
+
+  private parseSpecs(additionalInfo: Array<{ title?: string; description?: string }>) {
+    const specs: Record<string, string | null> = {
+      brand: null,
+      reference: null,
+      period: null,
+      case: null,
+      caseSize: null,
+      dial: null,
+      movement: null,
+      condition: null,
+    };
+
+    for (const block of additionalInfo) {
+      const html = block.description ?? '';
+      const lines = this.cleanHtml(html)
+        ?.split('\n')
+        .map(line => line.replace(/^•\s*/, '').trim())
+        .filter(Boolean) ?? [];
+
+      for (const line of lines) {
+        const match = line.match(/^([^:]+):\s*(.+)$/);
+        if (!match) continue;
+
+        const key = match[1].trim().toLowerCase();
+        const value = match[2].trim();
+        if (!value) continue;
+
+        if (key === 'brand') specs.brand = value;
+        else if (key === 'reference' || key === 'ref') specs.reference = value;
+        else if (key === 'period' || key === 'year') specs.period = value;
+        else if (key === 'case') specs.case = value;
+        else if (key === 'case size') specs.caseSize = value;
+        else if (key === 'dial') specs.dial = value;
+        else if (key === 'movement') specs.movement = value;
+        else if (key === 'condition') specs.condition = value;
+      }
+    }
+
+    return specs;
+  }
+
+  private cleanHtml(html: string | null): string | null {
+    if (!html) return null;
+    const text = decodeHtmlEntities(
+      html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<p[^>]*>/gi, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/<[^>]+>/g, ''),
+    );
+    const cleaned = text
+      .split('\n')
+      .map(line => line.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+    return cleaned || null;
+  }
+
+  private extractModel(title: string, matchedBrand?: string | null): string | null {
+    if (!matchedBrand) return title;
+    const stripped = title
+      .replace(new RegExp(`^${this.escapeRegex(matchedBrand)}\\s*[•·\\-–—]*\\s*`, 'i'), '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    return stripped || title;
+  }
+
+  private extractYear(...values: Array<string | null | undefined>): number | null {
+    for (const value of values) {
+      const match = value?.match(/\b(19\d{2}|20\d{2})\b/);
+      if (match) return parseInt(match[1], 10);
+    }
+    return null;
+  }
+
+  private toTitleCase(value: string): string {
+    if (/^[A-Z0-9 .&'-]+$/.test(value)) {
+      return value
+        .toLowerCase()
+        .replace(/\b\w/g, letter => letter.toUpperCase());
+    }
+    return value;
+  }
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 5. ANALOG/SHIFT [Shopify] — New York, NY
 //    Part of Watches of Switzerland Group
 //    Primary shop at shop.analogshift.com
 // ─────────────────────────────────────────────────────────────

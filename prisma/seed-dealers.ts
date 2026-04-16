@@ -1,5 +1,5 @@
 // prisma/seed-dealers.ts
-// Seeds all 20 DealerSource rows. Run after schema is set up.
+// Seeds dealer source rows. Run after schema is set up.
 // Run with: npx ts-node prisma/seed-dealers.ts
 
 import { PrismaClient } from '@prisma/client';
@@ -31,6 +31,17 @@ export const ALL_DEALERS = [
     adapterName: 'WatchnetJapanAdapter',
     scrapeConfig: { platform: 'custom', note: 'Japanese custom CMS, Playwright-scraped' },
     isActive: false, // Railway IPs blocked by JP host — 0 product links in production
+  },
+  {
+    name: 'Cyclope Watches',
+    slug: 'cyclope-watches',
+    baseUrl: 'https://www.cyclopewatches.com',
+    adapterName: 'CyclopeWatchesAdapter',
+    scrapeConfig: {
+      platform: 'wix',
+      note: 'SSR HTML + embedded Wix warmup-data payloads; Available inventory only',
+    },
+    isActive: true,
   },
   {
     name: 'Analog/Shift',
@@ -165,7 +176,7 @@ export const ALL_DEALERS = [
 ];
 
 async function main() {
-  console.log('🌱 Seeding 20 dealer sources...');
+  console.log(`🌱 Seeding ${ALL_DEALERS.length} dealer sources...`);
 
   for (const dealer of ALL_DEALERS) {
     await prisma.dealerSource.upsert({

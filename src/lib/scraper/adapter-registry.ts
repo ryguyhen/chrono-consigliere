@@ -11,6 +11,7 @@ import {
   CraftAndTailoredAdapter,
   DadAndSonWatchesAdapter,
   WatchnetJapanAdapter,
+  CyclopeWatchesAdapter,
   AnalogShiftAdapter,
   C4CJapanAdapter,
   DobleVintageAdapter,
@@ -38,6 +39,7 @@ export const ADAPTER_REGISTRY: Record<string, AdapterConstructor> = {
   CraftAndTailoredAdapter,       // craftandtailored.com
   DadAndSonWatchesAdapter,       // dadandson-watches.com
   WatchnetJapanAdapter,          // watchnet.co.jp (custom CMS → Playwright)
+  CyclopeWatchesAdapter,         // cyclopewatches.com (Wix SSR + embedded JSON)
   AnalogShiftAdapter,            // shop.analogshift.com
   C4CJapanAdapter,               // c4cjapan.com
   DobleVintageAdapter,           // doblevintagewatches.com
