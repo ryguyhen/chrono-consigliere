@@ -14,8 +14,7 @@ import { authOptions } from '@/lib/auth/auth.config';
 import { getEngagedListings, getNewArrivals, getWeeklyTrending } from '@/lib/watches/queries';
 import { getFeedForUser } from '@/lib/social/feed-service';
 import { WatchCard } from '@/components/watches/WatchCard';
-import { prisma } from '@/lib/db';
-import { getPublicLandingStats } from '@/lib/landing/public-stats';
+import { getActiveDealers, getPublicLandingStats } from '@/lib/landing/public-stats';
 import { Suspense } from 'react';
 import { formatPrice, timeAgo } from '@/lib/format';
 
@@ -57,19 +56,9 @@ export default async function RootPage() {
 
   // ── Public landing page ───────────────────────────────────────────────────
   // Marketing data only fetched for unauthenticated visitors.
-  const ACTIVE_LISTING = { isAvailable: true, source: { isActive: true } } as const;
-
-  const [{ inStockWatchCount, curatedDealerCount }, recentTicker] = await Promise.all([
+  const [{ inStockWatchCount, curatedDealerCount }, dealers] = await Promise.all([
     getPublicLandingStats(),
-    prisma.watchListing.findMany({
-      where: { ...ACTIVE_LISTING, brand: { not: 'Unknown' } },
-      orderBy: { createdAt: 'desc' },
-      take: 8,
-      select: {
-        brand: true, model: true, sourceTitle: true,
-        source: { select: { name: true } },
-      },
-    }),
+    getActiveDealers(),
   ]);
 
   return (
@@ -114,21 +103,7 @@ export default async function RootPage() {
         </div>
       </section>
 
-      {/* TICKER */}
-      {recentTicker.length > 0 && (
-        <div className="bg-parchment border-b border-[var(--border)] py-3 px-4 overflow-x-hidden">
-          <div className="flex gap-10 text-[11px] text-muted whitespace-nowrap">
-            {recentTicker.map((w, i) => (
-              <div key={i} className="flex items-center gap-2.5 flex-shrink-0">
-                <span className="w-1 h-1 rounded-full bg-gold/50 flex-shrink-0" />
-                {w.brand && w.brand !== 'Unknown' && w.model
-                  ? `Just in: ${w.brand} ${w.model}${w.source?.name ? ` — ${w.source.name}` : ''}`
-                  : `Just in: ${w.sourceTitle}${w.source?.name ? ` — ${w.source.name}` : ''}`}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <DealersSection dealers={dealers} />
 
       <Suspense fallback={null}>
         <EngagedSection />
@@ -375,6 +350,51 @@ async function PopularSection({ userId }: { userId: string }) {
 }
 
 // ─── Public sections (used on the unauthenticated landing only) ───────────────
+
+// Curated dealers — flex-wrap chip list linking into filtered browse results.
+// No logos (none available). Ordered by listing count so the most-stocked
+// dealers appear first. Automatically reflects active dealer sources in the DB.
+
+function DealersSection({ dealers }: { dealers: { name: string; slug: string }[] }) {
+  if (!dealers.length) return null;
+
+  return (
+    <>
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-8">
+        <div className="border-t border-[var(--border)]" />
+      </div>
+      <section className="px-4 sm:px-8 py-10 sm:py-14 max-w-[1200px] mx-auto">
+        <div className="flex justify-between items-end mb-5 sm:mb-7">
+          <div>
+            <div className="font-mono text-[9px] tracking-[0.18em] uppercase text-muted mb-1.5 sm:mb-2">
+              Our sources
+            </div>
+            <h2 className="text-[1.3rem] sm:text-[1.6rem] font-semibold tracking-[-0.02em]">
+              Curated dealers
+            </h2>
+          </div>
+          <Link
+            href="/browse"
+            className="font-mono text-[10px] tracking-[0.1em] uppercase text-muted hover:text-gold transition-colors whitespace-nowrap ml-4"
+          >
+            Browse all →
+          </Link>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {dealers.map((dealer) => (
+            <Link
+              key={dealer.slug}
+              href={`/browse?dealer=${dealer.slug}`}
+              className="inline-flex items-center px-3.5 py-1.5 border border-[var(--border)] rounded text-[12px] sm:text-[13px] text-ink/60 hover:border-gold/40 hover:text-gold transition-colors whitespace-nowrap"
+            >
+              {dealer.name}
+            </Link>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
 
 async function EngagedSection() {
   const listings = await getEngagedListings(6);

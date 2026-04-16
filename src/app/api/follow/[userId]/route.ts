@@ -1,14 +1,13 @@
 // src/app/api/follow/[userId]/route.ts
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth.config';
+import { getAuthUser } from '@/lib/auth/get-auth-user';
 import { prisma } from '@/lib/db';
 import { emitFeedEvent } from '@/lib/social/feed-service';
 
-export async function POST(_req: Request, { params }: { params: { userId: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const followerId = session.user.id;
+export async function POST(req: Request, { params }: { params: { userId: string } }) {
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const followerId = user.id;
   const followingId = params.userId;
 
   if (followerId === followingId)
@@ -23,10 +22,10 @@ export async function POST(_req: Request, { params }: { params: { userId: string
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { userId: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const followerId = session.user.id;
+export async function DELETE(req: Request, { params }: { params: { userId: string } }) {
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const followerId = user.id;
 
   await prisma.follow.deleteMany({ where: { followerId, followingId: params.userId } });
   return NextResponse.json({ following: false });

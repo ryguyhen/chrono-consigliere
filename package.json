@@ -18,9 +18,9 @@
     "db:seed:dealers": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed-dealers.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "scrape:run": "ts-node scripts/run-scrape.ts",
-    "scrape:all": "ts-node scripts/run-all-scrapers.ts",
-    "worker": "ts-node src/lib/queue/worker.ts",
+    "scrape:run": "ts-node --project tsconfig.scripts.json scripts/run-scrape.ts",
+    "scrape:all": "ts-node --project tsconfig.scripts.json scripts/run-all-scrapers.ts",
+    "worker": "ts-node --project tsconfig.scripts.json src/lib/queue/worker.ts",
     "scrape:cron": "ts-node --project tsconfig.scripts.json scripts/scrape-direct.ts"
   },
   "dependencies": {

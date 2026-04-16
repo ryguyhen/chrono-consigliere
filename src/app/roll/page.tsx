@@ -53,11 +53,11 @@ export default async function RollPage({ searchParams }: PageProps) {
 
   return (
     <div>
-      {/* Combined header + tabs — h1 suppressed on mobile (bottom nav labels this "Roll") */}
+      {/* Combined header + tabs — h1 suppressed on mobile (bottom nav labels this "WatchRoll") */}
       <div className="border-b border-[var(--border)]">
         <div className="max-w-[1040px] mx-auto px-4 sm:px-6">
           <h1 className="hidden md:block text-[1.4rem] font-semibold tracking-[-0.03em] pt-5 pb-3">
-            Roll
+            WatchRoll
           </h1>
           <div className="flex">
             <Link

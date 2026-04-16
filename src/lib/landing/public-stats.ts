@@ -13,3 +13,13 @@ export async function getPublicLandingStats() {
     curatedDealerCount: dealerCount,
   };
 }
+
+// Returns all active dealer sources for the homepage dealer list.
+// Ordered by listing count desc (most-stocked dealers first), then name asc.
+export async function getActiveDealers() {
+  return prisma.dealerSource.findMany({
+    where: { isActive: true },
+    select: { name: true, slug: true },
+    orderBy: [{ listings: { _count: 'desc' } }, { name: 'asc' }],
+  });
+}

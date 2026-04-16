@@ -58,15 +58,21 @@
 //   GET /api/browse?brand=Rolex&style=SPORT&sort=newest&page=2&facets=false
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth.config';
+import { getAuthUserId } from '@/lib/auth/get-auth-user';
 import { getWatches, getFilterOptions } from '@/lib/watches/queries';
 import { parseBrowseFilters } from '@/lib/watches/filters';
+import { rateLimit, getClientIp, RATE_LIMITS, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = rateLimit(`browse:${ip}`, RATE_LIMITS.browse);
+  if (!rl.success) return rateLimitResponse(rl);
+
   try {
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
+    const appVersion = req.headers.get('x-app-version');
+    if (appVersion) console.log(`[browse] app-version=${appVersion}`);
+
+    const userId = await getAuthUserId(req);
 
     // Parse URL params — supports multi-value keys (brand=Rolex&brand=Omega)
     const sp = req.nextUrl.searchParams;
@@ -84,7 +90,7 @@ export async function GET(req: NextRequest) {
     const includeFacets = sp.get('facets') !== 'false';
 
     const [{ watches, total, page, pageSize, hasMore }, facets] = await Promise.all([
-      getWatches(filters, userId),
+      getWatches(filters, userId ?? undefined),
       includeFacets ? getFilterOptions() : Promise.resolve(null),
     ]);
 

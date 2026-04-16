@@ -1,14 +1,13 @@
 // src/app/api/search/users/route.ts
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth.config';
+import { getAuthUser } from '@/lib/auth/get-auth-user';
 import { prisma } from '@/lib/db';
 
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const viewerId = session.user.id;
+  const viewerId = user.id;
   const { searchParams } = new URL(req.url);
   const q = searchParams.get('q')?.trim();
 

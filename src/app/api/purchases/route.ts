@@ -1,14 +1,13 @@
 // src/app/api/purchases/route.ts
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth.config';
+import { getAuthUser } from '@/lib/auth/get-auth-user';
 import { prisma } from '@/lib/db';
 import { emitFeedEvent } from '@/lib/social/feed-service';
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const userId = session.user.id;
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = user.id;
 
   const { listingId, priceActual, notes } = await req.json();
   if (!listingId) return NextResponse.json({ error: 'listingId required' }, { status: 400 });

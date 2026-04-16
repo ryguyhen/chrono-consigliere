@@ -11,7 +11,7 @@ interface NavProps {
 
 const DESKTOP_NAV_LINKS = [
   { href: '/browse',  label: 'Browse'  },
-  { href: '/roll',    label: 'Roll'    },
+  { href: '/roll',    label: 'WatchRoll' },
   { href: '/friends', label: 'Friends' },
 ];
 
@@ -74,11 +74,11 @@ function IconProfile({ active }: { active: boolean }) {
 }
 
 // ─── Bottom nav tabs (mobile) — 5-tab app model ───────────────────────────────
-//   Home | Browse | Roll | Friends | Profile
+//   Home | Browse | WatchRoll | Friends | Profile
 const BOTTOM_NAV = [
   { href: '/',        label: 'Home',    Icon: IconHome    },
   { href: '/browse',  label: 'Browse',  Icon: IconBrowse  },
-  { href: '/roll',    label: 'Roll',    Icon: IconRoll    },
+  { href: '/roll',    label: 'WatchRoll', Icon: IconRoll  },
   { href: '/friends', label: 'Friends', Icon: IconFriends },
   { href: '/profile', label: 'Profile', Icon: IconProfile },
 ];
