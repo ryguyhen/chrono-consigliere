@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { getTasteOverlap } from '@/lib/social/feed-service';
 import { WatchCard } from '@/components/watches/WatchCard';
 import { FollowButton } from '@/components/profile/FollowButton';
+import { EditProfileButton } from '@/components/profile/EditProfileButton';
 import type { WatchWithRelations } from '@/types';
 import Link from 'next/link';
 
@@ -105,9 +106,10 @@ export default async function ProfilePage({ params }: PageProps) {
                 {/* Actions — moved inside flex row */}
                 <div className="flex-shrink-0">
                   {isOwnProfile ? (
-                    <button className="border border-white/15 text-white/60 text-[11px] font-medium uppercase tracking-wide px-3 py-2 sm:px-4 rounded hover:border-gold/60 hover:text-gold transition-colors whitespace-nowrap">
-                      Edit
-                    </button>
+                    <EditProfileButton
+                      currentDisplayName={profile.displayName}
+                      currentUsername={profile.username}
+                    />
                   ) : (
                     <FollowButton userId={profile.userId} initialIsFollowing={isFollowing} />
                   )}
