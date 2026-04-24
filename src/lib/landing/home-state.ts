@@ -23,14 +23,25 @@ const ACTIVE_MIN_EVENTS = 2;
 const ACTIVE_WINDOW_DAYS = 14;
 
 export async function getHomeState(userId: string): Promise<HomeState> {
-  const [savedCount, followingCount, feed] = await Promise.all([
+  // Three independent queries. allSettled so a failure in any one of them
+  // degrades the homepage gracefully — e.g. a feed outage still lets us
+  // render the state card based on counts — instead of 500'ing the route.
+  const [savedRes, followingRes, feedRes] = await Promise.allSettled([
     prisma.wishlistItem.count({ where: { userId, list: 'FAVORITES' } }),
     prisma.follow.count({ where: { followerId: userId } }),
     getFeedForUser(userId, undefined, 10),
   ]);
 
+  if (savedRes.status === 'rejected') console.error('[home-state] savedCount failed', savedRes.reason);
+  if (followingRes.status === 'rejected') console.error('[home-state] followingCount failed', followingRes.reason);
+  if (feedRes.status === 'rejected') console.error('[home-state] feed failed', feedRes.reason);
+
+  const savedCount = savedRes.status === 'fulfilled' ? savedRes.value : 0;
+  const followingCount = followingRes.status === 'fulfilled' ? followingRes.value : 0;
+  const feedEvents = feedRes.status === 'fulfilled' ? feedRes.value.events : [];
+
   const cutoff = Date.now() - ACTIVE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-  const recentCircleEvents = feed.events
+  const recentCircleEvents = feedEvents
     .filter(e => e.listing && new Date(e.createdAt).getTime() >= cutoff)
     .slice(0, 3);
 

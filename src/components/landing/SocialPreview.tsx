@@ -13,16 +13,27 @@ export async function SocialPreview() {
   // Pull a handful of recent PUBLIC-activity indicators. We surface counts and
   // anonymized initials only — never names or listing titles — because the
   // viewer is unauthenticated and activity privacy defaults to FRIENDS.
-  const [likeCount, saveCount, collectorCount, recentActors] = await Promise.all([
-    prisma.like.count(),
-    prisma.wishlistItem.count({ where: { list: 'FAVORITES' } }),
-    prisma.profile.count(),
-    prisma.profile.findMany({
-      select: { displayName: true, username: true },
-      orderBy: { updatedAt: 'desc' },
-      take: 8,
-    }),
-  ]);
+  // Any failure here is non-critical to the landing experience: swallow it
+  // and render nothing rather than crash the whole page.
+  let likeCount = 0;
+  let saveCount = 0;
+  let collectorCount = 0;
+  let recentActors: { displayName: string | null; username: string }[] = [];
+  try {
+    [likeCount, saveCount, collectorCount, recentActors] = await Promise.all([
+      prisma.like.count(),
+      prisma.wishlistItem.count({ where: { list: 'FAVORITES' } }),
+      prisma.profile.count(),
+      prisma.profile.findMany({
+        select: { displayName: true, username: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 8,
+      }),
+    ]);
+  } catch (err) {
+    console.error('[SocialPreview] query failed', err);
+    return null;
+  }
 
   if (collectorCount === 0) return null;
 

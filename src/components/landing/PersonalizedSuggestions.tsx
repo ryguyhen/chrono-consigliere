@@ -8,7 +8,13 @@ import { WatchCard } from '@/components/watches/WatchCard';
 import { getPersonalizedSuggestions } from '@/lib/watches/queries';
 
 export async function PersonalizedSuggestions({ userId }: { userId: string }) {
-  const listings = await getPersonalizedSuggestions(userId, 6);
+  let listings;
+  try {
+    listings = await getPersonalizedSuggestions(userId, 6);
+  } catch (err) {
+    console.error('[PersonalizedSuggestions] query failed', err);
+    return null;
+  }
   if (listings.length < 3) return null;
 
   const brands = [...new Set(listings.slice(0, 3).map(l => l.brand))].slice(0, 2);

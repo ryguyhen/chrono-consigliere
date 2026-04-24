@@ -181,6 +181,9 @@ function ActiveCircleCard({ recentCircleEvents }: StateCardProps) {
   );
 }
 
+// Note: actor and listing are rendered as sibling links, not nested.
+// Nested <a> is invalid HTML; inline event handlers in Server Components
+// cross the server→client boundary as functions (not allowed in RSC).
 function CircleEventRow({ event }: { event: any }) {
   const actorName = event.actor.profile?.displayName ?? event.actor.name ?? 'Someone';
   const actorUsername = event.actor.profile?.username;
@@ -189,54 +192,55 @@ function CircleEventRow({ event }: { event: any }) {
   const hue = (initials.charCodeAt(0) * 37 + (initials.charCodeAt(1) || 0) * 13) % 360;
 
   return (
-    <Link
-      href={`/watch/${event.listing.id}`}
-      className="flex items-center gap-3 py-2 group"
-    >
-      <div
-        className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 font-medium text-[10px] flex-shrink-0"
-        style={{ background: `hsl(${hue}, 18%, 30%)` }}
-        aria-hidden
+    <div className="flex items-center gap-3 py-2">
+      <Link
+        href={actorUsername ? `/profile/${actorUsername}` : '/friends'}
+        className="flex items-center gap-3 min-w-0 flex-1 group"
       >
-        {initials}
-      </div>
-      <div className="w-10 h-10 rounded flex-shrink-0 bg-[#222] overflow-hidden relative border border-white/[0.08]">
-        {event.listing.images?.[0] ? (
-          <Image
-            src={event.listing.images[0].url}
-            alt={event.listing.sourceTitle}
-            fill sizes="40px"
-            className="object-cover"
-          />
-        ) : null}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[12px] text-cream/60 truncate">
-          <Link
-            href={actorUsername ? `/profile/${actorUsername}` : '#'}
-            className="text-cream font-medium hover:text-gold transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {actorName}
-          </Link>
-          {' '}{verb}
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 font-medium text-[10px] flex-shrink-0"
+          style={{ background: `hsl(${hue}, 18%, 30%)` }}
+          aria-hidden
+        >
+          {initials}
         </div>
-        <div className="text-[12px] text-cream/80 truncate group-hover:text-gold transition-colors">
-          <span className="text-gold/70 font-mono text-[9px] tracking-[0.1em] uppercase mr-1.5">
-            {event.listing.brand}
-          </span>
-          {event.listing.model || event.listing.sourceTitle}
+        <div className="w-10 h-10 rounded flex-shrink-0 bg-[#222] overflow-hidden relative border border-white/[0.08]">
+          {event.listing?.images?.[0] ? (
+            <Image
+              src={event.listing.images[0].url}
+              alt={event.listing.sourceTitle ?? ''}
+              fill sizes="40px"
+              className="object-cover"
+            />
+          ) : null}
         </div>
-      </div>
-      <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+        <div className="flex-1 min-w-0">
+          <div className="text-[12px] text-cream/60 truncate">
+            <span className="text-cream font-medium group-hover:text-gold transition-colors">
+              {actorName}
+            </span>
+            {' '}{verb}
+          </div>
+          <div className="text-[12px] text-cream/80 truncate">
+            <span className="text-gold/70 font-mono text-[9px] tracking-[0.1em] uppercase mr-1.5">
+              {event.listing?.brand}
+            </span>
+            {event.listing?.model || event.listing?.sourceTitle}
+          </div>
+        </div>
+      </Link>
+      <Link
+        href={event.listing ? `/watch/${event.listing.id}` : '/friends'}
+        className="flex flex-col items-end flex-shrink-0 gap-0.5 hover:text-gold transition-colors"
+      >
         <div className="text-[11px] text-cream/70">
-          {formatPrice(event.listing.price, event.listing.currency)}
+          {formatPrice(event.listing?.price ?? null, event.listing?.currency ?? 'USD')}
         </div>
         <div className="font-mono text-[9px] text-cream/35">
           {timeAgo(new Date(event.createdAt))}
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 

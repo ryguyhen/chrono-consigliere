@@ -7,7 +7,13 @@ import { WatchCard } from '@/components/watches/WatchCard';
 import { getRecentlySavedListings } from '@/lib/watches/queries';
 
 export async function ContinueStrip({ userId }: { userId: string }) {
-  const listings = await getRecentlySavedListings(userId, 8);
+  let listings;
+  try {
+    listings = await getRecentlySavedListings(userId, 8);
+  } catch (err) {
+    console.error('[ContinueStrip] query failed', err);
+    return null;
+  }
   if (listings.length < 2) return null;
 
   return (
