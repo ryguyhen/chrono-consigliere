@@ -273,40 +273,10 @@ export async function getFilterOptions() {
   };
 }
 
-// Listings with at least one real engagement signal, ordered by social rank.
-// Used for the homepage "Popular right now" section.
-// Returns empty array (not dummy inventory) if no engaged listings exist.
-export async function getEngagedListings(limit = 6): Promise<WatchWithRelations[]> {
-  const listings = await prisma.watchListing.findMany({
-    where: {
-      ...PUBLIC_WHERE,
-      OR: [{ likeCount: { gt: 0 } }, { saveCount: { gt: 0 } }],
-    },
-    select: LISTING_SELECT,
-    orderBy: [
-      { likeCount: 'desc' },
-      { saveCount: 'desc' },
-      { createdAt: 'desc' },
-    ],
-    take: limit,
-  });
-  return listings.map(w => ({ ...w, isLiked: null, isSaved: null, isOwned: null })) as WatchWithRelations[];
-}
-
-export async function getNewArrivals(limit = 8): Promise<WatchWithRelations[]> {
-  const listings = await prisma.watchListing.findMany({
-    where: { ...PUBLIC_WHERE },
-    select: LISTING_SELECT,
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  });
-  return listings.map(w => ({ ...w, isLiked: null, isSaved: null, isOwned: null })) as WatchWithRelations[];
-}
-
 // Recently-saved listings for the authenticated user — backs the homepage
-// "Continue where you left off" strip. Falls through to an empty array if the
-// user has no saves, in which case the caller should hide the section entirely.
-export async function getRecentlySavedListings(userId: string, limit = 8): Promise<WatchWithRelations[]> {
+// compact "recent saves" module (NOT a WatchCard grid — the homepage rule is
+// no listing shelves). Returns empty when the user has no saves.
+export async function getRecentlySavedListings(userId: string, limit = 3): Promise<WatchWithRelations[]> {
   const saves = await prisma.wishlistItem.findMany({
     where: { userId, list: 'FAVORITES', listing: { ...PUBLIC_WHERE } },
     select: { listingId: true, listing: { select: LISTING_SELECT } },
@@ -318,120 +288,5 @@ export async function getRecentlySavedListings(userId: string, limit = 8): Promi
     isLiked: null,
     isSaved: true,
     isOwned: false,
-  })) as WatchWithRelations[];
-}
-
-// Personalized suggestions by brand overlap — for users who have started a roll
-// but don't have an active circle yet. Pulls the top 3 brands from their saves,
-// then returns engaging listings from those brands they haven't saved yet.
-// Returns empty array when the user has no saves — caller should hide the
-// section in that case (use getEngagedListings for the empty-roll variant instead).
-export async function getPersonalizedSuggestions(userId: string, limit = 6): Promise<WatchWithRelations[]> {
-  const saves = await prisma.wishlistItem.findMany({
-    where: { userId, list: 'FAVORITES' },
-    select: { listingId: true, listing: { select: { brand: true } } },
-  });
-  if (!saves.length) return [];
-
-  const brandCounts = new Map<string, number>();
-  for (const s of saves) {
-    const b = s.listing?.brand;
-    if (!b) continue;
-    brandCounts.set(b, (brandCounts.get(b) ?? 0) + 1);
-  }
-  const topBrands = [...brandCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([b]) => b);
-
-  if (!topBrands.length) return [];
-
-  const savedIds = saves.map(s => s.listingId);
-  const listings = await prisma.watchListing.findMany({
-    where: {
-      ...PUBLIC_WHERE,
-      brand: { in: topBrands },
-      id: { notIn: savedIds },
-    },
-    select: LISTING_SELECT,
-    orderBy: [{ saveCount: 'desc' }, { likeCount: 'desc' }, { createdAt: 'desc' }],
-    take: limit,
-  });
-
-  return listings.map(w => ({
-    ...w,
-    isLiked: null,
-    isSaved: false,
-    isOwned: false,
-  })) as WatchWithRelations[];
-}
-
-// Listings most liked in the last 7 days, with fallback to all-time engaged.
-// Ranked by recent activity count so the list changes as collector interest shifts.
-// Accepts an optional userId to attach correct save state — callers on authenticated
-// surfaces should always pass userId to prevent WatchCard showing stale unsaved state.
-export async function getWeeklyTrending(limit = 6, userId?: string): Promise<WatchWithRelations[]> {
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-  // Oversample (limit × 3) to account for unavailable/duplicate listings being filtered.
-  const recentLikes = await prisma.like.groupBy({
-    by: ['listingId'],
-    where: { createdAt: { gte: weekAgo } },
-    _count: { listingId: true },
-    orderBy: { _count: { listingId: 'desc' } },
-    take: limit * 3,
-  });
-
-  let rawListings: any[] = [];
-
-  if (recentLikes.length >= 3) {
-    const ids = recentLikes.map(l => l.listingId);
-    const fetched = await prisma.watchListing.findMany({
-      where: { ...PUBLIC_WHERE, id: { in: ids } },
-      select: LISTING_SELECT,
-    });
-    // Preserve the weekly-rank order from the groupBy
-    const byId = new Map(fetched.map(l => [l.id, l]));
-    const ordered = ids.map(id => byId.get(id)).filter(Boolean);
-    if (ordered.length >= 3) {
-      rawListings = ordered.slice(0, limit);
-    }
-  }
-
-  // Fallback: all-time engaged listings (same signal as public home but as a fallback only)
-  if (rawListings.length < 3) {
-    rawListings = await prisma.watchListing.findMany({
-      where: {
-        ...PUBLIC_WHERE,
-        OR: [{ likeCount: { gt: 0 } }, { saveCount: { gt: 0 } }],
-      },
-      select: LISTING_SELECT,
-      orderBy: [{ likeCount: 'desc' }, { saveCount: 'desc' }, { createdAt: 'desc' }],
-      take: limit,
-    });
-  }
-
-  if (!rawListings.length) {
-    return [];
-  }
-
-  // Attach save/owned state if logged in — prevents WatchCard showing wrong button state
-  let savedIds: Set<string> | null = null;
-  let ownedIds: Set<string> | null = null;
-  if (userId) {
-    const ids = rawListings.map((l: any) => l.id);
-    const wishlistItems = await prisma.wishlistItem.findMany({
-      where: { userId, listingId: { in: ids } },
-      select: { listingId: true, list: true },
-    });
-    savedIds = new Set(wishlistItems.filter(s => s.list === 'FAVORITES').map(s => s.listingId));
-    ownedIds = new Set(wishlistItems.filter(s => s.list === 'OWNED').map(s => s.listingId));
-  }
-
-  return rawListings.map((w: any) => ({
-    ...w,
-    isLiked: null,
-    isSaved: savedIds ? savedIds.has(w.id) : null,
-    isOwned: ownedIds ? ownedIds.has(w.id) : null,
   })) as WatchWithRelations[];
 }

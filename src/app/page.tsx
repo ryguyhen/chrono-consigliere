@@ -1,19 +1,19 @@
 // src/app/page.tsx
 //
-// The root route serves two distinct surfaces that share zero data:
+// HARD RULE (see redesign brief): the homepage never shows rows of watch
+// listing cards. Browse, WatchRoll, dealer pages and activity views are
+// where inventory lives. Homepage is orientation, momentum, social framing.
 //
-//   Logged-out → marketing landing. Explain the product (social watch
-//     discovery), drive to one next action (start your roll). No inventory
-//     shelves — those duplicate /browse.
+// Logged-out → marketing landing: hero, dealer rail, how-it-works, social
+//   preview. No listing grids, no carousels, no popular/new-in.
 //
-//   Logged-in → a state-based dashboard. The top StateCard adapts to
-//     whether the user has saves, a circle, and recent circle activity.
-//     The sections beneath are all gated on their own data — every module
-//     can render or not independently, so the page never feels padded.
+// Logged-in → adaptive state card + (optionally) one compact continue
+//   module and one compact circle-activity preview. Neither uses WatchCard.
+//   A dealer rail sits at the bottom purely as ambient freshness (dealer
+//   chips, not listings).
 //
-// Variant selection and state fetching live in lib/landing/home-state.ts.
-// Inventory-specific queries live in lib/watches/queries.ts. This file is
-// just the orchestrator.
+// If you find yourself importing WatchCard here, stop. That belongs on
+// Browse / Roll / Profile.
 
 import { Suspense } from 'react';
 import { getServerSession } from 'next-auth';
@@ -26,10 +26,13 @@ import { HowItWorks } from '@/components/landing/HowItWorks';
 import { SocialPreview } from '@/components/landing/SocialPreview';
 import { StateCard } from '@/components/landing/StateCard';
 import { ContinueStrip } from '@/components/landing/ContinueStrip';
-import { PersonalizedSuggestions } from '@/components/landing/PersonalizedSuggestions';
 import { CircleActivityPreview } from '@/components/landing/CircleActivityPreview';
 
 export const dynamic = 'force-dynamic';
+
+// Bumped whenever the homepage structure changes. Surfaces as data-home-version
+// on the root <div> so we can verify which build is live in production.
+const HOME_VERSION = '2026-04-24-v3-no-shelves';
 
 export default async function RootPage() {
   const session = await getServerSession(authOptions);
@@ -41,10 +44,6 @@ export default async function RootPage() {
   return <PublicHome />;
 }
 
-// ─── Logged-out home ─────────────────────────────────────────────────────────
-// Hero → dealer rail → how it works → social preview. No inventory grids —
-// browsing lives at /browse and that's where inventory-style exploration belongs.
-
 async function PublicHome() {
   const [{ inStockWatchCount, curatedDealerCount }, dealers] = await Promise.all([
     getPublicLandingStats(),
@@ -52,7 +51,7 @@ async function PublicHome() {
   ]);
 
   return (
-    <div>
+    <div data-home-version={HOME_VERSION} data-home-variant="public">
       <MarketingHero
         inStockWatchCount={inStockWatchCount}
         curatedDealerCount={curatedDealerCount}
@@ -66,30 +65,18 @@ async function PublicHome() {
   );
 }
 
-// ─── Logged-in home ──────────────────────────────────────────────────────────
-// Order of sections is intentional:
-//   1. StateCard        — orientation + next action (adaptive)
-//   2. ContinueStrip    — pick up recent saves (hidden when empty)
-//   3. CirclePreview    — social tease (hidden for empty-roll & active-circle)
-//   4. Suggestions      — personalized by saved brands (hidden when no saves)
-//   5. DealerSection    — ambient freshness, same rail as the public page
-//
-// Every module silently disappears when it has nothing useful to say — so a
-// brand-new user sees a clean top card + starter chips + dealer rail, while
-// an active collector sees a dense personalized surface.
-
 async function AuthenticatedHome({ userId, displayName }: { userId: string; displayName: string }) {
   const [state, dealers] = await Promise.all([
     getHomeState(userId),
     getActiveDealers(),
   ]);
 
-  // Don't duplicate the circle preview: the active-circle top card already
-  // embeds recent events, so the standalone preview below it is skipped.
+  // The active-circle top card already embeds recent events — don't render
+  // the standalone preview beneath it or we duplicate signal.
   const showCirclePreview = state.variant !== 'active-circle' && state.variant !== 'empty-roll';
 
   return (
-    <div>
+    <div data-home-version={HOME_VERSION} data-home-variant={state.variant}>
       <StateCard
         variant={state.variant}
         displayName={displayName}
@@ -109,12 +96,6 @@ async function AuthenticatedHome({ userId, displayName }: { userId: string; disp
           events={state.recentCircleEvents}
           followingCount={state.followingCount}
         />
-      )}
-
-      {state.savedCount > 0 && (
-        <Suspense fallback={null}>
-          <PersonalizedSuggestions userId={userId} />
-        </Suspense>
       )}
 
       <DealerSection
