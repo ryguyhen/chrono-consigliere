@@ -251,6 +251,16 @@ export async function getWatchById(
   return { ...watch, isLiked, isSaved, isOwned } as WatchWithRelations;
 }
 
+// Best → worst, matches the WatchListing.condition enum order
+const CONDITION_RANK: Record<string, number> = {
+  UNWORN: 0,
+  MINT: 1,
+  EXCELLENT: 2,
+  VERY_GOOD: 3,
+  GOOD: 4,
+  FAIR: 5,
+};
+
 const MOVEMENT_DISPLAY: Record<string, string> = {
   AUTOMATIC: 'Automatic',
   MANUAL: 'Manual Wind',
@@ -296,7 +306,9 @@ export async function getFilterOptions() {
       .sort((a, b) =>
         (MOVEMENT_DISPLAY[a.value] ?? a.value).localeCompare(MOVEMENT_DISPLAY[b.value] ?? b.value)
       ),
-    conditions: conditions.map(c => ({ value: c.condition!, count: c._count })),
+    conditions: conditions
+      .map(c => ({ value: c.condition!, count: c._count }))
+      .sort((a, b) => (CONDITION_RANK[a.value] ?? 99) - (CONDITION_RANK[b.value] ?? 99)),
     dealers: dealers
       .map(d => ({ value: d.slug, label: d.name, count: d._count.listings }))
       .sort((a, b) => a.label.localeCompare(b.label)),
