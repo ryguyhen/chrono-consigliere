@@ -7,17 +7,10 @@ interface FilterOption { value: string; count: number; label?: string; }
 
 interface FilterOptions {
   brands: FilterOption[];
-  styles: FilterOption[];
   movements: FilterOption[];
   conditions: FilterOption[];
   dealers: FilterOption[];
 }
-
-const STYLE_LABELS: Record<string, string> = {
-  DRESS: 'Dress', SPORT: 'Sport', DIVE: 'Dive', CHRONOGRAPH: 'Chronograph',
-  FIELD: 'Field', GMT: 'GMT', PILOT: 'Pilot', INTEGRATED_BRACELET: 'Integrated Bracelet',
-  VINTAGE: 'Vintage', TONNEAU: 'Tonneau', SKELETON: 'Skeleton',
-};
 
 const CONDITION_LABELS: Record<string, string> = {
   UNWORN: 'Unworn', MINT: 'Mint', EXCELLENT: 'Excellent',
@@ -56,7 +49,7 @@ function useFilterState() {
 
   const isActive = (key: string, value: string) => params.getAll(key).includes(value);
 
-  const activeCount = ['brand', 'style', 'movement', 'condition', 'dealer'].reduce(
+  const activeCount = ['brand', 'movement', 'condition', 'dealer'].reduce(
     (sum, key) => sum + params.getAll(key).length, 0
   ) + (params.get('minPrice') ? 1 : 0) + (params.get('maxPrice') ? 1 : 0);
 
@@ -70,7 +63,20 @@ function useFilterState() {
     router.push(`/browse?${next.toString()}`);
   }
 
-  return { params, updateParam, clearParam, isActive, activeCount, minPrice, maxPrice, updatePrice };
+  // Single-push clear of every filter at once. Calling clearParam/updatePrice
+  // multiple times in a row each fires its own router.push with a stale copy
+  // of `params`, so only the last call's URL takes effect — leaving the other
+  // filters intact. This builds one URL and pushes once.
+  const clearAll = useCallback(() => {
+    const next = new URLSearchParams();
+    const q = params.get('q');
+    const sort = params.get('sort');
+    if (q) next.set('q', q);
+    if (sort) next.set('sort', sort);
+    router.push(next.toString() ? `/browse?${next.toString()}` : '/browse');
+  }, [params, router]);
+
+  return { params, updateParam, clearParam, clearAll, isActive, activeCount, minPrice, maxPrice, updatePrice };
 }
 
 // ─── Reusable checkbox row ────────────────────────────────────────────────────
@@ -99,7 +105,7 @@ function CheckboxRow({
 // ─── Mobile-only sectioned panel (used inside the bottom sheet) ───────────────
 
 function MobileFilterPanel({
-  brands, styles, movements, conditions, dealers,
+  brands, movements, conditions, dealers,
   updateParam, isActive, minPrice, maxPrice, updatePrice,
 }: FilterOptions & ReturnType<typeof useFilterState>) {
   function Section({ title, items, paramKey, labelMap }: {
@@ -130,7 +136,6 @@ function MobileFilterPanel({
   return (
     <>
       <Section title="Brand" items={brands} paramKey="brand" />
-      <Section title="Style" items={styles} paramKey="style" labelMap={STYLE_LABELS} />
       <div className="mb-6">
         <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted mb-3">Price</div>
         <div className="flex gap-2 items-center">
@@ -261,10 +266,9 @@ function DropdownCheckList({
 
 export function BrowseFilters(props: FilterOptions) {
   const state = useFilterState();
-  const { params, updateParam, clearParam, isActive, minPrice, maxPrice, updatePrice } = state;
+  const { params, updateParam, clearAll, isActive, minPrice, maxPrice, updatePrice } = state;
 
   const brandCount     = params.getAll('brand').length;
-  const styleCount     = params.getAll('style').length;
   const movementCount  = params.getAll('movement').length;
   const conditionCount = params.getAll('condition').length;
   const dealerCount    = params.getAll('dealer').length;
@@ -275,12 +279,6 @@ export function BrowseFilters(props: FilterOptions) {
       <FilterDropdown label="Brand" activeCount={brandCount} panelWidth={300}>
         {() => (
           <DropdownCheckList items={props.brands} paramKey="brand" isActive={isActive} updateParam={updateParam} />
-        )}
-      </FilterDropdown>
-
-      <FilterDropdown label="Style" activeCount={styleCount} panelWidth={260}>
-        {() => (
-          <DropdownCheckList items={props.styles} paramKey="style" labelMap={STYLE_LABELS} isActive={isActive} updateParam={updateParam} />
         )}
       </FilterDropdown>
 
@@ -331,12 +329,11 @@ export function BrowseFilters(props: FilterOptions) {
       <ActiveFilterChips
         params={params}
         brands={props.brands}
-        styles={props.styles}
         movements={props.movements}
         conditions={props.conditions}
         dealers={props.dealers}
         updateParam={updateParam}
-        clearParam={clearParam}
+        clearAll={clearAll}
         updatePrice={updatePrice}
       />
     </div>
@@ -346,17 +343,16 @@ export function BrowseFilters(props: FilterOptions) {
 // ─── Active-filter chip row ───────────────────────────────────────────────────
 
 function ActiveFilterChips({
-  params, brands, styles, movements, conditions, dealers,
-  updateParam, clearParam, updatePrice,
+  params, brands, movements, conditions, dealers,
+  updateParam, clearAll, updatePrice,
 }: {
   params: URLSearchParams;
   brands: FilterOption[];
-  styles: FilterOption[];
   movements: FilterOption[];
   conditions: FilterOption[];
   dealers: FilterOption[];
   updateParam: (k: string, v: string) => void;
-  clearParam: (k: string) => void;
+  clearAll: () => void;
   updatePrice: (k: 'minPrice' | 'maxPrice', v: string) => void;
 }) {
   const labelFor = (items: FilterOption[], v: string, map?: Record<string, string>) =>
@@ -365,8 +361,6 @@ function ActiveFilterChips({
   const chips: { label: string; onRemove: () => void; key: string }[] = [];
   params.getAll('brand').forEach(v =>
     chips.push({ key: `brand:${v}`, label: labelFor(brands, v), onRemove: () => updateParam('brand', v) }));
-  params.getAll('style').forEach(v =>
-    chips.push({ key: `style:${v}`, label: labelFor(styles, v, STYLE_LABELS), onRemove: () => updateParam('style', v) }));
   params.getAll('movement').forEach(v =>
     chips.push({ key: `movement:${v}`, label: labelFor(movements, v, MOVEMENT_LABELS), onRemove: () => updateParam('movement', v) }));
   params.getAll('condition').forEach(v =>
@@ -405,11 +399,7 @@ function ActiveFilterChips({
         </button>
       ))}
       <button
-        onClick={() => {
-          ['brand', 'style', 'movement', 'condition', 'dealer'].forEach(clearParam);
-          if (min) updatePrice('minPrice', '');
-          if (max) updatePrice('maxPrice', '');
-        }}
+        onClick={clearAll}
         className="font-mono text-[10px] tracking-[0.08em] uppercase text-muted hover:text-gold transition-colors ml-1"
       >
         Clear all

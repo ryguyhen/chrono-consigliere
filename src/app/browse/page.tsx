@@ -37,7 +37,6 @@ export default async function BrowsePage({ searchParams }: PageProps) {
               Without these, a GET form submission replaces the entire query string. */}
           <form className="flex-1 min-w-[160px]" action="/browse" method="GET">
             {filters.brand?.map(v => <input key={v} type="hidden" name="brand" value={v} />)}
-            {filters.style?.map(v => <input key={v} type="hidden" name="style" value={v} />)}
             {filters.movement?.map(v => <input key={v} type="hidden" name="movement" value={v} />)}
             {filters.condition?.map(v => <input key={v} type="hidden" name="condition" value={v} />)}
             {filters.dealer?.map(v => <input key={v} type="hidden" name="dealer" value={v} />)}

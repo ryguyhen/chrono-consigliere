@@ -251,8 +251,15 @@ export async function getWatchById(
   return { ...watch, isLiked, isSaved, isOwned } as WatchWithRelations;
 }
 
+const MOVEMENT_DISPLAY: Record<string, string> = {
+  AUTOMATIC: 'Automatic',
+  MANUAL: 'Manual Wind',
+  QUARTZ: 'Quartz',
+  SPRINGDRIVE: 'Spring Drive',
+};
+
 export async function getFilterOptions() {
-  const [brands, styles, movements, conditions, dealers] = await Promise.all([
+  const [brands, movements, conditions, dealers] = await Promise.all([
     prisma.watchListing.groupBy({
       by: ['brand'],
       // Exclude "Unknown" — it's a scraper fallback value, not a meaningful filter target.
@@ -261,11 +268,6 @@ export async function getFilterOptions() {
       _count: true,
       orderBy: { _count: { brand: 'desc' } },
       take: 60,
-    }),
-    prisma.watchListing.groupBy({
-      by: ['style'],
-      where: { ...PUBLIC_WHERE, style: { not: null } },
-      _count: true,
     }),
     prisma.watchListing.groupBy({
       by: ['movementType'],
@@ -289,10 +291,15 @@ export async function getFilterOptions() {
     brands: brands
       .map(b => ({ value: b.brand, count: b._count }))
       .sort((a, b) => a.value.localeCompare(b.value)),
-    styles: styles.map(s => ({ value: s.style!, count: s._count })),
-    movements: movements.map(m => ({ value: m.movementType!, count: m._count })),
+    movements: movements
+      .map(m => ({ value: m.movementType!, count: m._count }))
+      .sort((a, b) =>
+        (MOVEMENT_DISPLAY[a.value] ?? a.value).localeCompare(MOVEMENT_DISPLAY[b.value] ?? b.value)
+      ),
     conditions: conditions.map(c => ({ value: c.condition!, count: c._count })),
-    dealers: dealers.map(d => ({ value: d.slug, label: d.name, count: d._count.listings })),
+    dealers: dealers
+      .map(d => ({ value: d.slug, label: d.name, count: d._count.listings }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
   };
 }
 
