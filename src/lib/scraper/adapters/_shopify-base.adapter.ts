@@ -113,6 +113,7 @@ const DEFAULT_TITLE_EXCLUSIONS = [
   'earring',
   'cufflink',
   'cuff link',
+  'money clip',
   // Desk/valet items
   'valet tray',
   'catch-all',

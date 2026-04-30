@@ -58,6 +58,7 @@ const BROWSE_TITLE_BLOCKLIST = [
   'earring',
   'cufflink',
   'cuff link',
+  'money clip',
   // Desk/valet items — trays, catch-alls, etc.
   'valet tray',
   'catch-all',
