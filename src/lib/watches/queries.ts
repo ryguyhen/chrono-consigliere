@@ -44,6 +44,25 @@ const BROWSE_TITLE_BLOCKLIST = [
   'wallet',
   'umbrella',
   'brochure',
+  // Jewelry — rings, necklaces, etc. that occasionally appear in dealer feeds.
+  // Bare 'ring' would catch Tudor "Ring Command" bezel phrasing, so match
+  // ring-type compounds explicitly instead.
+  'signet ring',
+  'cocktail ring',
+  'engagement ring',
+  'wedding ring',
+  'wedding band',
+  'pinky ring',
+  'necklace',
+  'pendant',
+  'earring',
+  'cufflink',
+  'cuff link',
+  // Desk/valet items — trays, catch-alls, etc.
+  'valet tray',
+  'catch-all',
+  'catchall',
+  ' tray',          // space-prefix avoids matching compound words like "betray"
 ] as const;
 
 /**

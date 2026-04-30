@@ -100,6 +100,24 @@ const DEFAULT_TITLE_EXCLUSIONS = [
   'brass sign',     // dealer/retailer brass display signs — "Sign" ≠ "Signage", needs separate term
   'dealer sign',    // dealer display signs
   'retailer sign',  // retailer display signs
+  // Jewelry — rings, necklaces, etc. occasionally listed alongside watches.
+  // Bare 'ring' catches Tudor "Ring Command" phrasing, so match compounds.
+  'signet ring',
+  'cocktail ring',
+  'engagement ring',
+  'wedding ring',
+  'wedding band',
+  'pinky ring',
+  'necklace',
+  'pendant',
+  'earring',
+  'cufflink',
+  'cuff link',
+  // Desk/valet items
+  'valet tray',
+  'catch-all',
+  'catchall',
+  ' tray',
 ];
 
 export abstract class ShopifyBaseAdapter extends BaseAdapter {

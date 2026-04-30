@@ -30,10 +30,6 @@ export default async function BrowsePage({ searchParams }: PageProps) {
 
   return (
     <div className="flex min-h-[calc(100vh-52px)]">
-      <Suspense fallback={<div className="hidden md:block w-[200px] flex-shrink-0 bg-surface border-r border-[var(--border)]" />}>
-        <BrowseFilters {...filterOptions} />
-      </Suspense>
-
       <div className="flex-1 flex flex-col min-w-0">
         {/* Search + Sort bar */}
         <div className="bg-surface border-b border-[var(--border)] px-4 sm:px-6 py-3 flex flex-wrap gap-2 sm:gap-3 items-center">
@@ -70,6 +66,11 @@ export default async function BrowsePage({ searchParams }: PageProps) {
             )}
           </div>
         </div>
+
+        {/* Desktop horizontal filter bar */}
+        <Suspense fallback={<div className="hidden md:block h-[52px] bg-surface border-b border-[var(--border)]" />}>
+          <BrowseFilters {...filterOptions} />
+        </Suspense>
 
         {/* Grid */}
         {watches.length > 0 ? (
