@@ -284,7 +284,11 @@ export async function getFilterOptions() {
   ]);
 
   return {
-    brands: brands.map(b => ({ value: b.brand, count: b._count })),
+    // Query orders by count desc so the take(60) cap surfaces the most-populated
+    // brands; re-sort alphabetically here for display.
+    brands: brands
+      .map(b => ({ value: b.brand, count: b._count }))
+      .sort((a, b) => a.value.localeCompare(b.value)),
     styles: styles.map(s => ({ value: s.style!, count: s._count })),
     movements: movements.map(m => ({ value: m.movementType!, count: m._count })),
     conditions: conditions.map(c => ({ value: c.condition!, count: c._count })),
