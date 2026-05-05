@@ -2,6 +2,11 @@
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  SaveCurrentSearch,
+  SavedSearchesMenu,
+  MobileSavedSearchList,
+} from './SavedSearchControls';
 
 interface FilterOption { value: string; count: number; label?: string; }
 
@@ -264,15 +269,18 @@ function DropdownCheckList({
 
 // ─── Desktop horizontal filter bar ────────────────────────────────────────────
 
-export function BrowseFilters(props: FilterOptions) {
+export function BrowseFilters(props: FilterOptions & { signedIn?: boolean }) {
   const state = useFilterState();
-  const { params, updateParam, clearAll, isActive, minPrice, maxPrice, updatePrice } = state;
+  const { params, updateParam, clearAll, isActive, activeCount, minPrice, maxPrice, updatePrice } = state;
 
   const brandCount     = params.getAll('brand').length;
   const movementCount  = params.getAll('movement').length;
   const conditionCount = params.getAll('condition').length;
   const dealerCount    = params.getAll('dealer').length;
   const priceCount     = (minPrice ? 1 : 0) + (maxPrice ? 1 : 0);
+
+  // Bumping this number re-fetches the Saved menu after a successful save.
+  const [savedRefresh, setSavedRefresh] = useState(0);
 
   return (
     <div className="hidden md:flex items-center gap-2 px-6 py-3 bg-surface border-b border-[var(--border)] flex-wrap">
@@ -336,6 +344,16 @@ export function BrowseFilters(props: FilterOptions) {
         clearAll={clearAll}
         updatePrice={updatePrice}
       />
+
+      {props.signedIn && (
+        <div className="ml-auto flex items-center gap-2">
+          <SavedSearchesMenu refreshKey={savedRefresh} />
+          <SaveCurrentSearch
+            hasActiveFilters={activeCount > 0}
+            onSaved={() => setSavedRefresh(n => n + 1)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -410,7 +428,7 @@ function ActiveFilterChips({
 
 // ─── Mobile filter button (inline in header) + bottom sheet ───────────────────
 
-export function MobileFilterButton(props: FilterOptions) {
+export function MobileFilterButton(props: FilterOptions & { signedIn?: boolean }) {
   const [open, setOpen] = useState(false);
   const filterState = useFilterState();
   const { activeCount } = filterState;
@@ -469,6 +487,12 @@ export function MobileFilterButton(props: FilterOptions) {
 
             {/* Scrollable filter content */}
             <div className="overflow-y-auto flex-1 px-5 pb-4">
+              {props.signedIn && (
+                <MobileSavedSearchList
+                  hasActiveFilters={activeCount > 0}
+                  onApplied={() => setOpen(false)}
+                />
+              )}
               <MobileFilterPanel {...props} {...filterState} />
             </div>
 

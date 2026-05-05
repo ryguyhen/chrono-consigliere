@@ -51,7 +51,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
             />
           </form>
           <Suspense fallback={null}>
-            <MobileFilterButton {...filterOptions} />
+            <MobileFilterButton {...filterOptions} signedIn={!!userId} />
           </Suspense>
           <div className="flex items-center gap-2">
             <SortSelect defaultValue={filters.sort ?? 'newest'} />
@@ -68,7 +68,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
 
         {/* Desktop horizontal filter bar */}
         <Suspense fallback={<div className="hidden md:block h-[52px] bg-surface border-b border-[var(--border)]" />}>
-          <BrowseFilters {...filterOptions} />
+          <BrowseFilters {...filterOptions} signedIn={!!userId} />
         </Suspense>
 
         {/* Grid */}

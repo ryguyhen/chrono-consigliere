@@ -39,6 +39,7 @@ model User {
 
   mobileRefreshTokens MobileRefreshToken[]
   devicePushTokens    DevicePushToken[]
+  savedSearches       SavedSearch[]
 }
 
 model Account {
@@ -413,4 +414,23 @@ model DevicePushToken {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ─── Saved Searches ────────────────────────────────────────────────────────────
+// Named, reapplyable Browse filter snapshots. The `filters` Json column stores
+// a canonical BrowseFilters shape (sans `page`) so the same payload can be
+// rebuilt into a URL by the web client or consumed directly by mobile clients.
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String   // user-supplied; 1–60 chars after trimming (validated in API)
+  filters   Json     // canonical BrowseFilters minus `page`
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId, updatedAt(sort: Desc)])
 }
