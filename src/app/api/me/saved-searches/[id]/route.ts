@@ -26,41 +26,66 @@ function shape(row: { id: string; name: string; filters: unknown; createdAt: Dat
   };
 }
 
+function errorResponse(route: string, err: unknown): NextResponse {
+  const code = (err as any)?.code;
+  console.error(`[${route}] error code=${code ?? 'n/a'}:`, err);
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (code === 'P2002') {
+      return NextResponse.json({ error: 'A saved search with that name already exists', code }, { status: 409 });
+    }
+    if (code === 'P2025') {
+      return NextResponse.json({ error: 'Not found', code }, { status: 404 });
+    }
+    if (code === 'P2003') {
+      return NextResponse.json({ error: 'Invalid user reference', code }, { status: 400 });
+    }
+    if (code === 'P2021' || code === 'P2022') {
+      return NextResponse.json(
+        { error: 'Saved searches storage is not provisioned. Run prisma db push.', code },
+        { status: 503 },
+      );
+    }
+  }
+
+  return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+}
+
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const user = await getAuthUser(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  let body: { name?: unknown; filters?: unknown };
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+    const user = await getAuthUser(req);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const data: Prisma.SavedSearchUpdateInput = {};
-
-  if (body.name !== undefined) {
+    let body: { name?: unknown; filters?: unknown };
     try {
-      data.name = validateName(body.name);
-    } catch (err: any) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
-  }
 
-  if (body.filters !== undefined) {
-    const filters = fromJson(body.filters);
-    if (!isMeaningful(filters)) {
-      return NextResponse.json({ error: 'Cannot save an empty search' }, { status: 400 });
+    const data: Prisma.SavedSearchUpdateInput = {};
+
+    if (body.name !== undefined) {
+      try {
+        data.name = validateName(body.name);
+      } catch (validationErr: any) {
+        return NextResponse.json({ error: validationErr.message }, { status: 400 });
+      }
     }
-    data.filters = filters as Prisma.InputJsonValue;
-  }
 
-  if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
-  }
+    if (body.filters !== undefined) {
+      const filters = fromJson(body.filters);
+      if (!isMeaningful(filters)) {
+        return NextResponse.json({ error: 'Cannot save an empty search' }, { status: 400 });
+      }
+      data.filters = filters as Prisma.InputJsonValue;
+    }
 
-  // Scope by userId to prevent cross-user mutation; updateMany returns count.
-  try {
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    // Scope by userId to prevent cross-user mutation; updateMany returns count.
     const result = await prisma.savedSearch.updateMany({
       where: { id: params.id, userId: user.id },
       data,
@@ -68,29 +93,30 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (result.count === 0) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-  } catch (err: any) {
-    if (err?.code === 'P2002') {
-      return NextResponse.json({ error: 'A saved search with that name already exists' }, { status: 409 });
-    }
-    throw err;
-  }
 
-  const row = await prisma.savedSearch.findUnique({
-    where: { id: params.id },
-    select: { id: true, name: true, filters: true, createdAt: true, updatedAt: true },
-  });
-  return NextResponse.json({ savedSearch: row ? shape(row) : null });
+    const row = await prisma.savedSearch.findUnique({
+      where: { id: params.id },
+      select: { id: true, name: true, filters: true, createdAt: true, updatedAt: true },
+    });
+    return NextResponse.json({ savedSearch: row ? shape(row) : null });
+  } catch (err) {
+    return errorResponse(`PATCH /api/me/saved-searches/${params.id}`, err);
+  }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const user = await getAuthUser(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const user = await getAuthUser(req);
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const result = await prisma.savedSearch.deleteMany({
-    where: { id: params.id, userId: user.id },
-  });
-  if (result.count === 0) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const result = await prisma.savedSearch.deleteMany({
+      where: { id: params.id, userId: user.id },
+    });
+    if (result.count === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    return new NextResponse(null, { status: 204 });
+  } catch (err) {
+    return errorResponse(`DELETE /api/me/saved-searches/${params.id}`, err);
   }
-  return new NextResponse(null, { status: 204 });
 }
