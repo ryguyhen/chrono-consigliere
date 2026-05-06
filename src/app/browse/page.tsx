@@ -21,7 +21,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
 
   const [{ watches, total, hasMore, page, pageSize }, filterOptions] = await Promise.all([
     getWatches(filters, userId),
-    getFilterOptions(),
+    getFilterOptions(filters),
   ]);
 
   const totalPages = Math.ceil(total / pageSize);

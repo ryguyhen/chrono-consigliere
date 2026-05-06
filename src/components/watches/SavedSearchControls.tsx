@@ -53,13 +53,14 @@ async function deleteSavedSearch(id: string): Promise<void> {
 
 interface SaveCurrentSearchProps {
   /** Whether the user has any active filters (parent computes from URL state) */
-  hasActiveFilters: boolean;
+  /** True when there's something to save: at least one filter or a search query */
+  canSave: boolean;
   /** Bumped after a successful save so other widgets can refresh their list */
   onSaved?: () => void;
   className?: string;
 }
 
-export function SaveCurrentSearch({ hasActiveFilters, onSaved, className }: SaveCurrentSearchProps) {
+export function SaveCurrentSearch({ canSave, onSaved, className }: SaveCurrentSearchProps) {
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -85,7 +86,7 @@ export function SaveCurrentSearch({ hasActiveFilters, onSaved, className }: Save
     };
   }, [open]);
 
-  if (!hasActiveFilters) return null;
+  if (!canSave) return null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -274,10 +275,10 @@ export function SavedSearchesMenu({ refreshKey = 0, className }: SavedSearchesMe
 // between sections, no popover. Parent shows it above the facet sections.
 
 export function MobileSavedSearchList({
-  hasActiveFilters,
+  canSave,
   onApplied,
   refreshKey = 0,
-}: { hasActiveFilters: boolean; onApplied: () => void; refreshKey?: number }) {
+}: { canSave: boolean; onApplied: () => void; refreshKey?: number }) {
   const router = useRouter();
   const params = useSearchParams();
   const [items, setItems] = useState<SavedSearch[] | null>(null);
@@ -329,7 +330,7 @@ export function MobileSavedSearchList({
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
         <span className="font-mono text-[9px] tracking-[0.16em] uppercase text-muted">Saved searches</span>
-        {hasActiveFilters && !showSave && (
+        {canSave && !showSave && (
           <button
             onClick={() => setShowSave(true)}
             className="font-mono text-[9px] tracking-[0.16em] uppercase text-gold"

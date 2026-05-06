@@ -86,6 +86,57 @@ const PUBLIC_WHERE = {
   },
 };
 
+/**
+ * Build the Prisma `where` clause for a Browse query, optionally excluding one
+ * facet so the same shape can drive disjunctive facet counts.
+ *
+ * `exclude` lets the caller compute "what would the count be for this facet
+ * if I weren't already filtering by it?" — needed for the filter dropdowns
+ * to show meaningful counts after a selection.
+ */
+type BrowseFacet = 'brand' | 'movement' | 'condition' | 'dealer' | 'price' | 'case';
+
+function buildBrowseWhere(filters: BrowseFilters, exclude?: BrowseFacet): any {
+  const where: any = { ...PUBLIC_WHERE };
+
+  if (filters.q) {
+    where.OR = [
+      { brand:       { contains: filters.q, mode: 'insensitive' } },
+      { model:       { contains: filters.q, mode: 'insensitive' } },
+      { reference:   { contains: filters.q, mode: 'insensitive' } },
+      { description: { contains: filters.q, mode: 'insensitive' } },
+      { sourceTitle: { contains: filters.q, mode: 'insensitive' } },
+    ];
+  }
+  if (exclude !== 'brand' && filters.brand?.length) {
+    where.brand = { in: filters.brand, mode: 'insensitive' };
+  }
+  // 'style' has no UI facet (UI removed); back-compat for old saved URLs.
+  if (filters.style?.length) {
+    where.style = { in: filters.style };
+  }
+  if (exclude !== 'movement' && filters.movement?.length) {
+    where.movementType = { in: filters.movement };
+  }
+  if (exclude !== 'condition' && filters.condition?.length) {
+    where.condition = { in: filters.condition };
+  }
+  if (exclude !== 'dealer' && filters.dealer?.length) {
+    where.source = { isActive: true, slug: { in: filters.dealer } };
+  }
+  if (exclude !== 'price' && (filters.minPrice || filters.maxPrice)) {
+    where.price = {};
+    if (filters.minPrice) where.price.gte = filters.minPrice * 100;
+    if (filters.maxPrice) where.price.lte = filters.maxPrice * 100;
+  }
+  if (exclude !== 'case' && (filters.minCase || filters.maxCase)) {
+    where.caseSizeMm = {};
+    if (filters.minCase) where.caseSizeMm.gte = filters.minCase;
+    if (filters.maxCase) where.caseSizeMm.lte = filters.maxCase;
+  }
+  return where;
+}
+
 const LISTING_SELECT = {
   id: true,
   brand: true,
@@ -124,49 +175,7 @@ export async function getWatches(
   const page = filters.page ?? 1;
   const skip = (page - 1) * PAGE_SIZE;
 
-  const where: any = { ...PUBLIC_WHERE };
-
-  if (filters.q) {
-    where.OR = [
-      { brand: { contains: filters.q, mode: 'insensitive' } },
-      { model: { contains: filters.q, mode: 'insensitive' } },
-      { reference: { contains: filters.q, mode: 'insensitive' } },
-      { description: { contains: filters.q, mode: 'insensitive' } },
-      { sourceTitle: { contains: filters.q, mode: 'insensitive' } },
-    ];
-  }
-
-  if (filters.brand?.length) {
-    where.brand = { in: filters.brand, mode: 'insensitive' };
-  }
-
-  if (filters.style?.length) {
-    where.style = { in: filters.style };
-  }
-
-  if (filters.movement?.length) {
-    where.movementType = { in: filters.movement };
-  }
-
-  if (filters.condition?.length) {
-    where.condition = { in: filters.condition };
-  }
-
-  if (filters.dealer?.length) {
-    where.source = { isActive: true, slug: { in: filters.dealer } };
-  }
-
-  if (filters.minPrice || filters.maxPrice) {
-    where.price = {};
-    if (filters.minPrice) where.price.gte = filters.minPrice * 100;
-    if (filters.maxPrice) where.price.lte = filters.maxPrice * 100;
-  }
-
-  if (filters.minCase || filters.maxCase) {
-    where.caseSizeMm = {};
-    if (filters.minCase) where.caseSizeMm.gte = filters.minCase;
-    if (filters.maxCase) where.caseSizeMm.lte = filters.maxCase;
-  }
+  const where = buildBrowseWhere(filters);
 
   let orderBy: any = { createdAt: 'desc' };
   if (filters.sort === 'price-asc') orderBy = { price: 'asc' };
@@ -273,30 +282,50 @@ const MOVEMENT_DISPLAY: Record<string, string> = {
   SPRINGDRIVE: 'Spring Drive',
 };
 
-export async function getFilterOptions() {
+/**
+ * Filter dropdown options with disjunctive facet counts.
+ *
+ * Each facet's count reflects what would match if the user added (or
+ * de-selected) that value, given every OTHER active filter — i.e. the
+ * facet's own selections are excluded from its own count query. This is
+ * the standard pattern for OR-multi-select facet UIs and avoids the
+ * confusing "I selected Automatic but Brand counts didn't change" effect.
+ *
+ * Pass `filters` from `parseBrowseFilters(searchParams)`.
+ */
+export async function getFilterOptions(filters: BrowseFilters = {}) {
   const [brands, movements, conditions, dealers] = await Promise.all([
     prisma.watchListing.groupBy({
       by: ['brand'],
       // Exclude "Unknown" — it's a scraper fallback value, not a meaningful filter target.
       // Browsing by Unknown is not useful and it would otherwise dominate the list.
-      where: { ...PUBLIC_WHERE, brand: { not: 'Unknown' } },
+      where: { ...buildBrowseWhere(filters, 'brand'), brand: { not: 'Unknown' } },
       _count: true,
       orderBy: { _count: { brand: 'desc' } },
       take: 60,
     }),
     prisma.watchListing.groupBy({
       by: ['movementType'],
-      where: { ...PUBLIC_WHERE, movementType: { not: null } },
+      where: { ...buildBrowseWhere(filters, 'movement'), movementType: { not: null } },
       _count: true,
     }),
     prisma.watchListing.groupBy({
       by: ['condition'],
-      where: { ...PUBLIC_WHERE, condition: { not: null } },
+      where: { ...buildBrowseWhere(filters, 'condition'), condition: { not: null } },
       _count: true,
     }),
     prisma.dealerSource.findMany({
       where: { isActive: true },
-      select: { slug: true, name: true, _count: { select: { listings: { where: { isAvailable: true } } } } },
+      select: {
+        slug: true,
+        name: true,
+        // Count listings within the dealer's own listings relation, applying
+        // every active filter EXCEPT dealer (so all dealers show meaningful
+        // counts within the user's other constraints).
+        _count: {
+          select: { listings: { where: buildBrowseWhere(filters, 'dealer') } },
+        },
+      },
     }),
   ]);
 
@@ -316,6 +345,9 @@ export async function getFilterOptions() {
       .sort((a, b) => (CONDITION_RANK[a.value] ?? 99) - (CONDITION_RANK[b.value] ?? 99)),
     dealers: dealers
       .map(d => ({ value: d.slug, label: d.name, count: d._count.listings }))
+      // Drop dealers with no matches under the active filters — clicking them
+      // would show an empty grid, and they pollute the alphabetical scan.
+      .filter(d => d.count > 0)
       .sort((a, b) => a.label.localeCompare(b.label)),
   };
 }

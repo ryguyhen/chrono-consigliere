@@ -54,9 +54,17 @@ function useFilterState() {
 
   const isActive = (key: string, value: string) => params.getAll(key).includes(value);
 
+  // Filter-only count — drives the mobile filter-trigger badge and the
+  // facet-clearing chip row. Excludes the search query, which lives in the
+  // top-of-page search input rather than in the filter sheet.
   const activeCount = ['brand', 'movement', 'condition', 'dealer'].reduce(
     (sum, key) => sum + params.getAll(key).length, 0
   ) + (params.get('minPrice') ? 1 : 0) + (params.get('maxPrice') ? 1 : 0);
+
+  // True when the current URL has anything worth saving — facet filters OR a
+  // free-text search query. The Save UI is gated on this so a user can save
+  // searches like "bubbleback" with no other filters applied.
+  const hasSaveableState = activeCount > 0 || !!params.get('q')?.trim();
 
   const minPrice = params.get('minPrice') ?? '';
   const maxPrice = params.get('maxPrice') ?? '';
@@ -81,7 +89,7 @@ function useFilterState() {
     router.push(next.toString() ? `/browse?${next.toString()}` : '/browse');
   }, [params, router]);
 
-  return { params, updateParam, clearParam, clearAll, isActive, activeCount, minPrice, maxPrice, updatePrice };
+  return { params, updateParam, clearParam, clearAll, isActive, activeCount, hasSaveableState, minPrice, maxPrice, updatePrice };
 }
 
 // ─── Reusable checkbox row ────────────────────────────────────────────────────
@@ -271,7 +279,7 @@ function DropdownCheckList({
 
 export function BrowseFilters(props: FilterOptions & { signedIn?: boolean }) {
   const state = useFilterState();
-  const { params, updateParam, clearAll, isActive, activeCount, minPrice, maxPrice, updatePrice } = state;
+  const { params, updateParam, clearAll, isActive, hasSaveableState, minPrice, maxPrice, updatePrice } = state;
 
   const brandCount     = params.getAll('brand').length;
   const movementCount  = params.getAll('movement').length;
@@ -349,7 +357,7 @@ export function BrowseFilters(props: FilterOptions & { signedIn?: boolean }) {
         <div className="ml-auto flex items-center gap-2">
           <SavedSearchesMenu refreshKey={savedRefresh} />
           <SaveCurrentSearch
-            hasActiveFilters={activeCount > 0}
+            canSave={hasSaveableState}
             onSaved={() => setSavedRefresh(n => n + 1)}
           />
         </div>
@@ -489,7 +497,7 @@ export function MobileFilterButton(props: FilterOptions & { signedIn?: boolean }
             <div className="overflow-y-auto flex-1 px-5 pb-4">
               {props.signedIn && (
                 <MobileSavedSearchList
-                  hasActiveFilters={activeCount > 0}
+                  canSave={filterState.hasSaveableState}
                   onApplied={() => setOpen(false)}
                 />
               )}
